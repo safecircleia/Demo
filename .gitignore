@@ -40,5 +40,5 @@ yarn-error.log*
 next-env.d.ts
 
 # AI output
-/result
+/result_fold*
 /final_model

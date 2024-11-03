@@ -9,7 +9,7 @@ from nltk.tokenize import word_tokenize
 import nltk
 from sklearn.feature_extraction.text import CountVectorizer
 
-nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
 
 # Load the dataset
 df = pd.read_csv('dataset.csv')
@@ -119,7 +119,9 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(X_vectorized, df['label'])
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="f1",
+        no_cuda=True  # Ensure that training only uses CPU
     )
+
 
     # Trainer
     trainer = Trainer(
@@ -150,6 +152,9 @@ new_messages = [
 
 model = AutoModelForSequenceClassification.from_pretrained("./final_model").to('cuda')  # Ensure the model is on GPU
 encodings = tokenizer(new_messages, truncation=True, padding=True, max_length=128, return_tensors="pt").to('cuda')  # Move inputs to GPU
+
+#model = AutoModelForSequenceClassification.from_pretrained("./final_model", num_labels=2).to('cpu')  # Ensure the model is on CPU
+#encodings = tokenizer(new_messages, truncation=True, padding=True, max_length=128, return_tensors="pt").to('cpu')  # Move inputs to CPU
 outputs = model(**encodings)
 predictions = torch.softmax(outputs.logits, dim=1)
 

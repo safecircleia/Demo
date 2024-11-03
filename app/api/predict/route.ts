@@ -4,8 +4,22 @@ import { promisify } from 'util'
 
 const execAsync = promisify(exec)
 
+// This should be stored securely, preferably in environment variables
+const API_KEYS = ['7SJjywNVXa$f0iVn5WmXXI*4']
+
 export async function POST(req: Request) {
   try {
+    // Extract the API key from the Authorization header
+    const authHeader = req.headers.get('Authorization')
+    const apiKey = authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : null
+
+    // Check if the API key is valid
+    if (!apiKey || !API_KEYS.includes(apiKey)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { message } = await req.json()
 
     // Execute the Python script with the message as an argument
