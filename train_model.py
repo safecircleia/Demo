@@ -1,167 +1,344 @@
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
-from sklearn.model_selection import train_test_split, StratifiedKFold
-import pandas as pd
-from sklearn.metrics import classification_report
+import os
+import random
+import logging
 import numpy as np
-from imblearn.over_sampling import SMOTE
-from nltk.tokenize import word_tokenize
+import pandas as pd
+import torch
+
 import nltk
-from sklearn.feature_extraction.text import CountVectorizer
+from nltk.tokenize import word_tokenize
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from torch.utils.data import Dataset, DataLoader
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import OneCycleLR
+from tqdm import tqdm
+from typing import Dict, List
 
-nltk.download('punkt_tab', quiet=True)
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Load the dataset
-df = pd.read_csv('dataset.csv')
+# Constants
+BATCH_SIZE = 8
+ACCUMULATION_STEPS = 4
+MAX_LENGTH = 128
+NUM_EPOCHS = 10
+LEARNING_RATE = 2e-5
+MODEL_NAME = "distilbert-base-multilingual-cased"
 
-# Tokenizer and model
-model_name = "distilbert-base-multilingual-cased"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2).to('cuda')  # Move model to GPU
+def set_seed(seed: int = 42):
+    """Set seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
-# Data augmentation function
-def augment_text(text):
-    words = word_tokenize(text)
-    augmented = []
-    for i in range(len(words)):
-        new_text = ' '.join(words[:i] + words[i+1:])
-        augmented.append(new_text)
-    return augmented
+set_seed()
 
-# Augment the dataset
-augmented_texts = []
-augmented_labels = []
-for text, label in zip(df['text'], df['label']):
-    augmented_texts.extend(augment_text(text))
-    augmented_labels.extend([label] * len(augment_text(text)))
+def get_device():
+    """Use GPU if available, otherwise CPU."""
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-df_augmented = pd.DataFrame({'text': augmented_texts, 'label': augmented_labels})
-df = pd.concat([df, df_augmented], ignore_index=True)
-
-# Dataset class
-class MessageDataset(torch.utils.data.Dataset):
-    def __init__(self, texts, labels):
+class PredatorDataset(Dataset):
+    """Custom Torch Dataset for text classification."""
+    def __init__(self, texts, labels, tokenizer, max_length=MAX_LENGTH):
         self.texts = texts
         self.labels = labels
+        self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def __len__(self):
         return len(self.texts)
 
     def __getitem__(self, idx):
-        text = self.texts[idx]
-        label = self.labels[idx]
-        encoding = tokenizer(text, truncation=True, padding='max_length', max_length=128, return_tensors='pt')
+        text = str(self.texts[idx])
+        encoding = self.tokenizer(
+            text,
+            truncation=True,
+            padding='max_length',
+            max_length=self.max_length,
+            return_tensors='pt'
+        )
+
         return {
-            'input_ids': encoding['input_ids'].flatten(),
-            'attention_mask': encoding['attention_mask'].flatten(),
-            'labels': torch.tensor(label, dtype=torch.long)
-    }
+            'input_ids': encoding['input_ids'].squeeze(0),
+            'attention_mask': encoding['attention_mask'].squeeze(0),
+            'labels': torch.tensor(self.labels[idx], dtype=torch.long)
+        }
 
+class EfficientTrainer:
+    def __init__(
+        self,
+        model: AutoModelForSequenceClassification,
+        train_dataset: Dataset,
+        val_dataset: Dataset,
+        learning_rate: float = LEARNING_RATE,
+        class_weights: torch.Tensor = None
+    ):
+        self.model = model
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
+        self.class_weights = class_weights
 
-# Metrics computation
-def compute_metrics(pred):
-    labels = pred.label_ids
-    preds = pred.predictions.argmax(-1)
-    report = classification_report(labels, preds, output_dict=True)
-    return {
-        'accuracy': report['accuracy'],
-        'f1': report['weighted avg']['f1-score'],
-        'precision': report['weighted avg']['precision'],
-        'recall': report['weighted avg']['recall']
-    }
+        self.device = get_device()
+        logger.info(f"Using device: {self.device}")
+        self.model.to(self.device)
+        if self.class_weights is not None:
+            self.class_weights = self.class_weights.to(self.device)
 
-# Hyperparameters
-hyperparameters = {
-    'num_train_epochs': 10,
-    'per_device_train_batch_size': 16,
-    'per_device_eval_batch_size': 64,
-    'warmup_steps': 500,
-    'weight_decay': 0.01,
-    'learning_rate': 2e-5,
-}
+        # Optimizer initialization
+        self.optimizer = AdamW(
+            self.model.parameters(),
+            lr=learning_rate,
+            weight_decay=0.01
+        )
 
-# Cross-validation
-n_splits = 5
-skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        # Data loaders
+        self.train_loader = DataLoader(
+            train_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=0,
+            pin_memory=True
+        )
 
-# Vectorize the text data for SMOTE
-vectorizer = CountVectorizer()
-X_vectorized = vectorizer.fit_transform(df['text'])
+        self.val_loader = DataLoader(
+            val_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=True
+        )
 
-for fold, (train_idx, val_idx) in enumerate(skf.split(X_vectorized, df['label']), 1):
-    print(f"Fold {fold}")
+        steps_per_epoch = max(1, len(self.train_loader) // ACCUMULATION_STEPS)
+        self.scheduler = OneCycleLR(
+            self.optimizer,
+            max_lr=learning_rate,
+            steps_per_epoch=steps_per_epoch,
+            epochs=NUM_EPOCHS,
+            pct_start=0.1
+        )
 
-    X_train, X_val = X_vectorized[train_idx], X_vectorized[val_idx]
-    y_train, y_val = df['label'].iloc[train_idx], df['label'].iloc[val_idx]
+    def compute_weighted_loss(self, logits, labels):
+        if self.class_weights is None:
+            return torch.nn.functional.cross_entropy(logits, labels)
+        return torch.nn.functional.cross_entropy(logits, labels, weight=self.class_weights)
 
-    # Apply SMOTE to balance the training data
-    smote = SMOTE(random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    def train_epoch(self) -> float:
+        self.model.train()
+        total_loss = 0.0
+        self.optimizer.zero_grad()
 
-    # Convert back to text
-    train_texts_resampled = vectorizer.inverse_transform(X_train_resampled)
-    train_texts_resampled = [' '.join(text) for text in train_texts_resampled]
+        progress_bar = tqdm(self.train_loader, desc="Training")
 
-    # Create datasets
-    train_dataset = MessageDataset(train_texts_resampled, y_train_resampled)
-    val_dataset = MessageDataset(df['text'].iloc[val_idx].tolist(), y_val.tolist())
+        for idx, batch in enumerate(progress_bar):
+            batch = {k: v.to(self.device) for k, v in batch.items()}
 
-    # Training arguments
-    training_args = TrainingArguments(
-        output_dir=f'./results_fold_{fold}',
-        num_train_epochs=hyperparameters['num_train_epochs'],
-        per_device_train_batch_size=hyperparameters['per_device_train_batch_size'],
-        per_device_eval_batch_size=hyperparameters['per_device_eval_batch_size'],
-        warmup_steps=hyperparameters['warmup_steps'],
-        weight_decay=hyperparameters['weight_decay'],
-        learning_rate=hyperparameters['learning_rate'],
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        metric_for_best_model="f1",
-        no_cuda=True  # Ensure that training only uses CPU
+            outputs = self.model(**batch)
+            if self.class_weights is not None:
+                loss = self.compute_weighted_loss(outputs.logits, batch['labels'])
+            else:
+                loss = outputs.loss
+
+            loss = loss / ACCUMULATION_STEPS
+            loss.backward()
+
+            if (idx + 1) % ACCUMULATION_STEPS == 0:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                self.optimizer.step()
+                self.scheduler.step()
+                self.optimizer.zero_grad()
+
+            total_loss += loss.item() * ACCUMULATION_STEPS
+            progress_bar.set_postfix({'loss': f'{total_loss/(idx+1):.4f}'})
+
+        return total_loss / len(self.train_loader)
+
+    def evaluate(self) -> Dict:
+        self.model.eval()
+        total_loss = 0.0
+        all_preds = []
+        all_labels = []
+
+        with torch.no_grad():
+            for batch in tqdm(self.val_loader, desc="Evaluating"):
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                outputs = self.model(**batch)
+
+                if self.class_weights is not None:
+                    loss = self.compute_weighted_loss(outputs.logits, batch['labels'])
+                else:
+                    loss = outputs.loss
+
+                total_loss += loss.item()
+
+                preds = torch.argmax(outputs.logits, dim=-1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(batch['labels'].cpu().numpy())
+
+        report = classification_report(all_labels, all_preds, output_dict=True)
+        return {
+            'loss': total_loss / len(self.val_loader),
+            'accuracy': report['accuracy'],
+            'f1': report['weighted avg']['f1-score'],
+            'precision': report['weighted avg']['precision'],
+            'recall': report['weighted avg']['recall']
+        }
+
+def augment_data(df: pd.DataFrame) -> pd.DataFrame:
+    logger.info("Augmenting dataset...")
+    augmented_texts = []
+    augmented_labels = []
+
+    for _, row in df.iterrows():
+        text = row['text']
+        label = row['label']
+
+        # Original text
+        augmented_texts.append(text)
+        augmented_labels.append(label)
+
+        words = word_tokenize(text)
+
+        if len(words) > 3:
+            # Word deletion (remove one word at a time)
+            for i in range(len(words)):
+                new_text = ' '.join(words[:i] + words[i+1:])
+                augmented_texts.append(new_text)
+                augmented_labels.append(label)
+
+            # Word order changes
+            for _ in range(2):  # Create 2 shuffled versions
+                shuffled = words.copy()
+                random.shuffle(shuffled)
+                augmented_texts.append(' '.join(shuffled))
+                augmented_labels.append(label)
+
+            # Add punctuation variations
+            if label == 1:  # Only augment harmful messages
+                variations = [
+                    f"{text}...",
+                    f"{text}!",
+                    f"{text}?",
+                ]
+                augmented_texts.extend(variations)
+                augmented_labels.extend([label] * len(variations))
+
+    aug_df = pd.DataFrame({'text': augmented_texts, 'label': augmented_labels})
+    logger.info(f"Dataset size after augmentation: {len(aug_df)}")
+    return aug_df
+
+def main():
+    logger.info("Loading dataset...")
+    df = pd.read_csv('dataset.csv')
+
+    # Data augmentation
+    df = augment_data(df)
+
+    # Calculate class weights
+    class_counts = df['label'].value_counts()
+    total_samples = len(df)
+    class_weights = torch.tensor([
+        total_samples / (2 * count) for count in class_counts
+    ])
+
+    logger.info(f"Class weights: {class_weights}")
+
+    logger.info("Initializing model and tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        MODEL_NAME,
+        num_labels=2,
+        problem_type="single_label_classification"
     )
 
-
-    # Trainer
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        compute_metrics=compute_metrics,
+    # Split data
+    train_texts, val_texts, train_labels, val_labels = train_test_split(
+        df['text'].values,
+        df['label'].values,
+        test_size=0.2,
+        stratify=df['label'],
+        random_state=42
     )
 
-    # Train and evaluate
-    trainer.train()
-    eval_results = trainer.evaluate()
-    print(f"Fold {fold} Evaluation Results:", eval_results)
+    train_dataset = PredatorDataset(train_texts, train_labels, tokenizer)
+    val_dataset = PredatorDataset(val_texts, val_labels, tokenizer)
 
-# Save the final model
-trainer.save_model("./final_model")
-print("Model training completed and saved in ./final_model directory")
+    trainer = EfficientTrainer(
+        model,
+        train_dataset,
+        val_dataset,
+        class_weights=class_weights
+    )
 
-# Test with new messages
-new_messages = [
-    "Puedes mandarme tu foto?",
-    "Que estas haciendo hoy?",
-    "No le digas a nadie sobre nuestra conversación",
-    "¿Quieres ser mi amigo secreto?",
-    "Hablemos de tus pasatiempos"
-]
+    logger.info("Starting training...")
+    best_f1 = 0.0
 
-model = AutoModelForSequenceClassification.from_pretrained("./final_model").to('cuda')  # Ensure the model is on GPU
-encodings = tokenizer(new_messages, truncation=True, padding=True, max_length=128, return_tensors="pt").to('cuda')  # Move inputs to GPU
+    for epoch in range(NUM_EPOCHS):
+        logger.info(f"\nEpoch {epoch+1}/{NUM_EPOCHS}")
 
-#model = AutoModelForSequenceClassification.from_pretrained("./final_model", num_labels=2).to('cpu')  # Ensure the model is on CPU
-#encodings = tokenizer(new_messages, truncation=True, padding=True, max_length=128, return_tensors="pt").to('cpu')  # Move inputs to CPU
-outputs = model(**encodings)
-predictions = torch.softmax(outputs.logits, dim=1)
+        train_loss = trainer.train_epoch()
+        eval_metrics = trainer.evaluate()
 
-print("\nPredictions:")
-for message, prediction in zip(new_messages, predictions):
-    harmful_prob = prediction[1].item()
-    label = "Harmful" if harmful_prob > 0.5 else "Safe"
-    print(f"Message: {message}")
-    print(f"Prediction: {label} (Harmful probability: {harmful_prob:.2f})")
-    print()
+        logger.info(f"Train loss: {train_loss:.4f}")
+        logger.info(f"Validation metrics: {eval_metrics}")
+
+        if eval_metrics['f1'] > best_f1:
+            best_f1 = eval_metrics['f1']
+            logger.info("Saving best model...")
+            os.makedirs('final_model', exist_ok=True)
+            model.save_pretrained('final_model')
+
+    logger.info("\nTraining completed!")
+
+    # Model verification
+    logger.info("\nModel Verification:")
+    model.eval()
+    device = get_device()
+
+    # Test harmful messages
+    logger.info("\nTesting known harmful messages:")
+    test_harmful = [
+        "¿podemos encontrarnos en algún lugar privado?",
+        "¿Puedes enviarme una foto?",
+        "Quiero mantener esto en secreto",
+        "¿Estás solo en casa?",
+        "No le digas a tus padres sobre nuestra conversación"
+    ]
+
+    # Test safe messages
+    logger.info("\nTesting known safe messages:")
+    test_safe = [
+        "¡Hola! ¿Cómo estás hoy?",
+        "¡Que tengas un buen día!",
+        "Hablemos de la escuela",
+        "¿Cuál es tu película favorita?",
+        "¿Qué haces cuando estás aburrido?"
+    ]
+
+    with torch.no_grad():
+        logger.info("\nHarmful messages probabilities:")
+        for msg in test_harmful:
+            inputs = tokenizer(msg, return_tensors="pt", truncation=True, max_length=MAX_LENGTH)
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            outputs = model(**inputs)
+            prob = torch.softmax(outputs.logits, dim=1)[0][1].item()
+            logger.info(f"Message: {msg}")
+            logger.info(f"Harmful probability: {prob:.4f}")
+
+        logger.info("\nSafe messages probabilities:")
+        for msg in test_safe:
+            inputs = tokenizer(msg, return_tensors="pt", truncation=True, max_length=MAX_LENGTH)
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            outputs = model(**inputs)
+            prob = torch.softmax(outputs.logits, dim=1)[0][1].item()
+            logger.info(f"Message: {msg}")
+            logger.info(f"Harmful probability: {prob:.4f}")
+
+if __name__ == "__main__":
+    main()

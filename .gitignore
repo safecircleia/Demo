@@ -42,3 +42,6 @@ next-env.d.ts
 # AI output
 /result_fold*
 /final_model
+
+# Environment variables
+.env
