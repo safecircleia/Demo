@@ -3,9 +3,11 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import { GeistSans } from "./fonts";
 import "./globals.css";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "AI Predator Detector",
+  title: "SafeCircle",
   description: "A technical demo for educational purposes",
 };
 
@@ -23,8 +25,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AnimatedBackground />
+          <Navbar />
           {children}
+          <Footer />
         </ThemeProvider>
       </body>
     </html>

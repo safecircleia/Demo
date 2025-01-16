@@ -68,36 +68,26 @@
     background: linear-gradient(
         to bottom,
         hsl(222.2 84% 4.9%),
-        hsl(222.2 47.4% 11.2%)
+        hsl(224 71.4% 4.1%),
+        hsl(220.9 39.3% 11%)
     );
+    min-height: 100vh;
 }
 
 /* Glass effect improvements */
 .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
-}
-
-.dark .glass {
-    @apply bg-black/20 border-white/10;
+    @apply bg-black/20 backdrop-blur-md border-white/10 shadow-lg;
 }
 
 /* Improved gradient backgrounds */
 .bg-gradient {
     background: linear-gradient(
         135deg,
-        rgba(var(--primary), 0.1),
-        rgba(var(--secondary), 0.1)
-    );
-    background-size: 400% 400%;
-    animation: gradient 15s ease infinite;
-}
-
-.dark .bg-gradient {
-    background: linear-gradient(
-        135deg,
         rgba(var(--primary), 0.2),
         rgba(var(--secondary), 0.2)
     );
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
 }
 
 /* Enhanced orb animations */
@@ -105,13 +95,40 @@
 .orb-2,
 .orb-3 {
     filter: blur(40px);
-    opacity: 0.7;
+    opacity: 0.4;
 }
 
-.dark .orb-1,
-.dark .orb-2,
-.dark .orb-3 {
-    opacity: 0.4;
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.orb-1 {
+  @apply absolute w-96 h-96 bg-purple-500/30 rounded-full -top-20 -left-20;
+  animation: float 8s infinite;
+}
+
+.orb-2 {
+  @apply absolute w-96 h-96 bg-blue-500/30 rounded-full top-1/2 right-0;
+  animation: float 12s infinite;
+}
+
+.orb-3 {
+  @apply absolute w-96 h-96 bg-indigo-500/30 rounded-full bottom-0 left-1/4;
+  animation: float 10s infinite;
+}
+
+.orb-4 {
+  @apply absolute w-96 h-96 bg-violet-500/30 rounded-full top-1/3 right-1/4;
+  animation: float 14s infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(2%, 2%) rotate(5deg); }
+  50% { transform: translate(-2%, 4%) rotate(-5deg); }
+  75% { transform: translate(-4%, -2%) rotate(5deg); }
 }
 
 @layer base {
@@ -121,4 +138,20 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+.chat-gradient {
+  background: linear-gradient(
+    to bottom right,
+    hsl(var(--background) / 0.9),
+    hsl(var(--background) / 0.8)
+  );
+}
+
+.message-hover {
+  transition: all 0.2s ease;
+}
+
+.message-hover:hover {
+  transform: translateY(-1px);
 }

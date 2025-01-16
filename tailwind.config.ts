@@ -91,7 +91,9 @@ module.exports = {
   		},
   		animation: {
   			gradient: 'gradient 15s ease infinite',
-  			blob: 'blob 7s infinite'
+  			blob: 'blob 7s infinite',
+  			'accordion-down': 'accordion-down 0.2s ease-out',
+  			'accordion-up': 'accordion-up 0.2s ease-out'
   		}
   	}
   },

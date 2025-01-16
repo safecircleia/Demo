@@ -7,7 +7,7 @@ const ANALYSIS_PROMPT = `You are an AI safety system designed to detect potentia
 Analyze the following message and respond in JSON format with:
 1. A risk_level between 0 and 1 (where 1 is highest risk)
 2. A brief explanation of your assessment
-3. A classification of either "safe", "suspicious", or "dangerous"
+3. A classification of either "safe", "suspicious", or "malicious"
 
 Message to analyze: "{message}"
 
