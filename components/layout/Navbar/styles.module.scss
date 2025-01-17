@@ -1,0 +1,40 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 50;
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brandName {
+  font-size: 1.25rem;
+  font-weight: 600;
+  background: linear-gradient(to right, #fff, #a8b1ff);
+  -webkit-background-clip: text;
+  color: transparent;
+  letter-spacing: -0.025em;
+}
+
+.link {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s ease;
+  font-size: 0.9rem;
+
+  &:hover {
+    color: white;
+  }
+}
+
+.authButton {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}

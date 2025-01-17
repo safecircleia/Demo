@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, AlertTriangle, ShieldCheck, Shield, Smile } from "lucide-react";
+import { Send, Loader2, AlertTriangle, ShieldCheck, Shield, Smile, Clock, FileJson, Copy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -23,14 +24,24 @@ interface Message {
       risk_level: number;
       classification: string;
     };
+    responseTime?: number;
+    rawResponse?: string;
   };
 }
+
+const formatConfidence = (confidence: number) => {
+  // Ensure the confidence is already in percentage (0-100)
+  const normalizedConfidence = Math.min(Math.round(confidence), 100);
+  return `${normalizedConfidence}%`;
+};
 
 export default function MessageAnalyzer() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showJsonDialog, setShowJsonDialog] = useState(false);
+  const [selectedJson, setSelectedJson] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -84,107 +95,153 @@ export default function MessageAnalyzer() {
     }
   };
 
+  const copyToClipboard = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="container max-w-2xl mx-auto p-4"
-    >
-      <Alert variant="warning" className="mb-6">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          This is a prototype demonstration. Results are for testing purposes only and should not be considered definitive.
-        </AlertDescription>
-      </Alert>
-
-      <Card className="bg-slate-950 border-slate-800">
-        <CardHeader>
-          <h2 className="text-2xl font-bold text-center">Message Safety Analysis</h2>
-          <p className="text-muted-foreground text-center">
-            Enter a message to analyze for potential threats
-          </p>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="flex justify-end">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={clearMessages}
-              disabled={messages.length === 0}
-            >
-              Clear Log
-            </Button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message to analyze..."
-              className="w-full"
-              disabled={isLoading}
-            />
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={isLoading || !input.trim()}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Shield className="h-4 w-4 mr-2" />
-              )}
-              {isLoading ? "Analyzing..." : "Analyze Message"}
-            </Button>
-          </form>
-
-          <AnimatePresence>
-            {messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className={`rounded-lg p-4 space-y-2 ${
-                  message.prediction?.classification === "safe"
-                    ? "bg-emerald-950/50 border border-emerald-900"
-                    : message.prediction?.classification === "malicious"
-                    ? "bg-red-950/50 border border-red-900"
-                    : message.prediction?.classification === "suspicious"
-                    ? "bg-yellow-950/50 border border-yellow-900"
-                    : "bg-slate-900 border border-slate-800"
-                }`}
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="container mx-auto"
+      >
+        <Card className="border border-white/10 bg-black/50 backdrop-blur-xl">
+          <CardHeader className="space-y-4">
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearMessages}
+                disabled={messages.length === 0}
+                className="border-white/10 hover:bg-white/5"
               >
-                <div className="flex items-center justify-between">
-                  <Badge variant={
-                    message.prediction?.classification === "safe" ? "success" : 
-                    message.prediction?.classification === "malicious" ? "destructive" :
-                    message.prediction?.classification === "suspicious" ? "warning" : 
-                    "secondary"
-                  }>
-                    {message.prediction?.classification 
-                      ? message.prediction.classification.charAt(0).toUpperCase() + message.prediction.classification.slice(1)
-                      : "Analyzing..."}
-                  </Badge>
-                  {message.prediction?.probability && (
-                    <span className="text-sm text-muted-foreground">
-                      Confidence: {(message.prediction.probability * 100).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm">{message.content}</p>
-                {message.prediction?.details && (
-                  <div className="text-sm text-muted-foreground border-t border-slate-800 pt-2 mt-2">
-                    <p>{message.prediction.details.explanation}</p>
-                  </div>
+                Clear Log
+              </Button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message to analyze..."
+                className="bg-black/50 border-white/10 focus:border-white/20 placeholder:text-white/50"
+                disabled={isLoading}
+              />
+              <Button 
+                type="submit" 
+                className="w-full bg-white text-black hover:bg-white/90 transition-colors"
+                disabled={isLoading || !input.trim()}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Shield className="h-4 w-4 mr-2" />
                 )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
-    </motion.div>
+                {isLoading ? "Analyzing..." : "Analyze Message"}
+              </Button>
+            </form>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <AnimatePresence>
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className={`rounded-lg p-4 space-y-2 border backdrop-blur-sm ${
+                    message.prediction?.classification === "SAFE"
+                      ? "border-emerald-500/20 bg-emerald-500/5"
+                      : message.prediction?.classification === "DANGEROUS"
+                      ? "border-red-500/20 bg-red-500/5"
+                      : message.prediction?.classification === "SUSPICIOUS"
+                      ? "border-yellow-500/20 bg-yellow-500/5"
+                      : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  <div className="flex flex-col space-y-3">
+                    {/* Message content */}
+                    <p className="text-gray-200">{message.content}</p>
+                    
+                    {/* Status and actions row */}
+                    <div className="flex items-center justify-between">
+                      <Badge variant={
+                        message.prediction?.classification === "safe" ? "success" : 
+                        message.prediction?.classification === "malicious" ? "destructive" :
+                        message.prediction?.classification === "suspicious" ? "warning" : 
+                        "secondary"
+                      }
+                      className="font-medium"
+                      >
+                        {message.prediction?.classification 
+                          ? message.prediction.classification.charAt(0).toUpperCase() + message.prediction.classification.slice(1)
+                          : "Analyzing..."}
+                      </Badge>
+                      
+                      <div className="flex items-center gap-3">
+                        {/* Response Time */}
+                        {message.prediction?.responseTime && (
+                          <span className="flex items-center gap-1 text-sm text-gray-400">
+                            <Clock className="h-4 w-4" />
+                            {message.prediction.responseTime}ms
+                          </span>
+                        )}
+                        
+                        {/* Raw Response Button */}
+                        {message.prediction?.rawResponse && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedJson(JSON.stringify(JSON.parse(message.prediction.rawResponse), null, 2));
+                              setShowJsonDialog(true);
+                            }}
+                            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-300"
+                          >
+                            <FileJson className="h-4 w-4" />
+                            Raw
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Description/Reason */}
+                    {message.prediction?.details?.explanation && (
+                      <p className="text-sm text-gray-400 mt-2">
+                        {message.prediction.details.explanation}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <Dialog open={showJsonDialog} onOpenChange={setShowJsonDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Raw Response</DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="absolute right-2 top-2"
+              onClick={() => copyToClipboard(selectedJson)}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <pre className="bg-black/20 p-4 rounded-lg overflow-auto max-h-[60vh] text-sm">
+              {selectedJson}
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

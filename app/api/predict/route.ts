@@ -3,78 +3,93 @@ import { NextResponse } from "next/server";
 const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 
 // Custom prompt template for analyzing messages
-const ANALYSIS_PROMPT = `You are an AI safety system designed to detect potentially harmful or predatory behavior in messages.
-Analyze the following message and respond in JSON format with:
-1. A risk_level between 0 and 1 (where 1 is highest risk)
-2. A brief explanation of your assessment
-3. A classification of either "safe", "suspicious", or "malicious"
+const ANALYSIS_PROMPT = `As an AI safety analyzer, evaluate the following message for potential predatory or harmful content. Support both English and Spanish analysis.
 
-Message to analyze: "{message}"
+Context: You are evaluating messages to detect potential online predators and harmful content.
 
-Respond only with valid JSON in this format:
+Analyze this message: {message}
+
+Provide your analysis in the following strict JSON format:
 {
-  "risk_level": number,
-  "explanation": string,
-  "classification": string
-}`;
+  "status": "SAFE" | "SUSPICIOUS" | "DANGEROUS",
+  "confidence": <number between 0-100>,
+  "reason": "<brief explanation focusing on behavioral patterns and risk factors>"
+}
+
+Analysis criteria:
+1. Personal information requests
+2. Age-related questions
+3. Grooming patterns
+4. Manipulative language
+5. Suspicious meeting requests
+6. Inappropriate content
+7. Pressure tactics
+8. Isolation attempts
+
+Do not include translations. Focus on intent analysis.`;
 
 interface OllamaResponse {
-  model: string;
-  created_at: string;
   response: string;
-  done: boolean;
 }
 
 interface AnalysisResult {
-  risk_level: number;
-  explanation: string;
-  classification: string;
+  status: 'SAFE' | 'SUSPICIOUS' | 'DANGEROUS';
+  confidence: number;
+  reason: string;
+  responseTime?: number;
+  rawResponse?: string;
 }
 
 async function analyzeWithOllama(message: string): Promise<AnalysisResult> {
+  const startTime = performance.now();
+  
   try {
-    console.log("Sending request to Ollama...");
+    console.log("Analyzing message:", message);
 
     const response = await fetch(OLLAMA_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*", // Add CORS header
+        "Access-Control-Allow-Origin": "*",
       },
       body: JSON.stringify({
-        model: "llama2",
+        model: "llama3.2",
         prompt: ANALYSIS_PROMPT.replace("{message}", message),
         stream: false,
+        options: {
+          temperature: 0.1,
+          top_p: 0.9,
+          max_tokens: 2048,
+          repeat_penalty: 1.1
+        }
       }),
-      // Add these options for local development
       cache: "no-store",
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Ollama API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
     }
 
     const data: OllamaResponse = await response.json();
-    console.log("Ollama response:", data);
-
+    const responseTime = Math.round(performance.now() - startTime);
+    
     try {
-      const analysis: AnalysisResult = JSON.parse(data.response);
-      return analysis;
-    } catch (parseError) {
-      console.error("Failed to parse Ollama response:", parseError);
+      const analysisResult = JSON.parse(data.response);
+      
       return {
-        risk_level: 0.5,
-        explanation: "Failed to analyze message properly",
-        classification: "suspicious",
+        status: analysisResult.status,
+        confidence: analysisResult.confidence,
+        reason: analysisResult.reason,
+        responseTime: responseTime,
+        rawResponse: data.response
       };
+    } catch (parseError) {
+      console.error("Failed to parse LLM response:", parseError);
+      throw new Error("Invalid analysis format received");
     }
   } catch (error) {
-    console.error("Ollama API error:", error);
-    throw new Error(
-      `Ollama API error: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
+    console.error("Analysis failed:", error);
+    throw error;
   }
 }
 
@@ -130,21 +145,25 @@ export async function POST(req: Request) {
         pattern.test(message),
       );
       analysis = {
-        risk_level: isHarmful ? 0.8 + Math.random() * 0.2 : Math.random() * 0.3,
-        explanation: isHarmful
+        status: isHarmful ? 'SUSPICIOUS' : 'SAFE',
+        confidence: isHarmful ? 80 + Math.random() * 20 : Math.random() * 30,
+        reason: isHarmful
           ? "Message contains potentially harmful patterns"
           : "Message appears safe",
-        classification: isHarmful ? "suspicious" : "safe",
       };
     }
 
     const response = {
-      prediction: analysis.explanation,
-      probability: analysis.risk_level,
-      classification: analysis.classification,
+      prediction: analysis.reason,
+      probability: analysis.confidence,
+      classification: analysis.status,
       details: {
-        ...analysis,
+        explanation: analysis.reason,
+        risk_level: analysis.confidence,
+        classification: analysis.status
       },
+      responseTime: analysis.responseTime,
+      rawResponse: analysis.rawResponse
     };
 
     console.log("Sending response:", response);

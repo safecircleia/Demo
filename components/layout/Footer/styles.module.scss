@@ -1,0 +1,46 @@
+.footer {
+  position: relative;
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 8rem; // Added margin-top
+}
+
+.columnTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.linkList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.link {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s ease;
+  font-size: 0.9rem;
+
+  &:hover {
+    color: white;
+  }
+}
+
+.socialLinks {
+  display: flex;
+  gap: 1rem;
+  
+  a {
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: white;
+    }
+  }
+}

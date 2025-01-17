@@ -1,0 +1,119 @@
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.backgroundGradientWrapper {
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: var(--background);
+  max-height: 100vh;
+  pointer-events: none;
+
+  & video {
+    opacity: 0;
+    animation: fadeIn 2s ease-in-out forwards;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-image: url('/images/crt.gif');
+    background-repeat: repeat;
+    background-size: 256px;
+    background-position: center center;
+    mix-blend-mode: multiply;
+  }
+
+  &::after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-shadow: inset 0 100px 120px 100px var(--background);
+  }
+}
+
+.fallback {
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+}@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.backgroundGradientWrapper {
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: var(--background);
+  max-height: 100vh;
+  pointer-events: none;
+
+  & video {
+    opacity: 0;
+    animation: fadeIn 2s ease-in-out forwards;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-image: url('/images/crt.gif');
+    background-repeat: repeat;
+    background-size: 256px;
+    background-position: center center;
+    mix-blend-mode: multiply;
+  }
+
+  &::after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-shadow: inset 0 100px 120px 100px var(--background);
+  }
+}
+
+.fallback {
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+}

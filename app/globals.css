@@ -4,7 +4,7 @@
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
+        --background: rgb(17, 24, 39);
         --foreground: 0 0% 3.9%;
         --card: 0 0% 100%;
         --card-foreground: 0 0% 3.9%;
@@ -32,7 +32,7 @@
     }
 
     .dark {
-        --background: 0 0% 3.9%;
+        --background: rgb(17, 24, 39);
         --foreground: 0 0% 98%;
         --card: 0 0% 3.9%;
         --card-foreground: 0 0% 98%;
@@ -57,11 +57,6 @@
         --chart-4: 280 65% 60%;
         --chart-5: 340 75% 55%;
     }
-}
-
-/* Improved dark mode transitions */
-* {
-    @apply transition-colors duration-200;
 }
 
 .dark body {
@@ -90,38 +85,10 @@
     animation: gradient 15s ease infinite;
 }
 
-/* Enhanced orb animations */
-.orb-1,
-.orb-2,
-.orb-3 {
-    filter: blur(40px);
-    opacity: 0.4;
-}
-
 @keyframes gradient {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
-}
-
-.orb-1 {
-  @apply absolute w-96 h-96 bg-purple-500/30 rounded-full -top-20 -left-20;
-  animation: float 8s infinite;
-}
-
-.orb-2 {
-  @apply absolute w-96 h-96 bg-blue-500/30 rounded-full top-1/2 right-0;
-  animation: float 12s infinite;
-}
-
-.orb-3 {
-  @apply absolute w-96 h-96 bg-indigo-500/30 rounded-full bottom-0 left-1/4;
-  animation: float 10s infinite;
-}
-
-.orb-4 {
-  @apply absolute w-96 h-96 bg-violet-500/30 rounded-full top-1/3 right-1/4;
-  animation: float 14s infinite reverse;
 }
 
 @keyframes float {
@@ -154,4 +121,129 @@
 
 .message-hover:hover {
   transform: translateY(-1px);
+}
+
+/* Animated background */
+.animated-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 50%, 
+    rgb(0, 0, 0),
+    rgb(10, 10, 10)
+  );
+}
+
+/* Add these new animations and gradients */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 8s linear infinite;
+  background-size: 200% 100%;
+}
+
+/* Update the gradient blur */
+.gradient-blur {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: normal;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+}
+
+.orb {
+  position: absolute;
+  filter: blur(100px);
+  opacity: 0.5;
+  transform-origin: center;
+  border-radius: 50%;
+}
+
+.orb-1 {
+  top: -20%;
+  left: -10%;
+  width: 60vh;
+  height: 60vh;
+  background: radial-gradient(circle at 50% 50%, 
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.05)
+  );
+  animation: float 20s infinite;
+}
+
+.orb-2 {
+  top: 40%;
+  right: -15%;
+  width: 50vh;
+  height: 50vh;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.03)
+  );
+  animation: float 25s infinite reverse;
+}
+
+.orb-3 {
+  bottom: -10%;
+  left: 25%;
+  width: 45vh;
+  height: 45vh;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.02)
+  );
+  animation: float 30s infinite;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(50px, -50px) rotate(180deg); }
+  66% { transform: translate(-50px, 50px) rotate(270deg); }
+  100% { transform: translate(0, 0) rotate(360deg); }
+}
+
+/* Add these styles to your globals.css */
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.nav-blur {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.main-content {
+  padding-top: 4rem; /* 64px, matches navbar height */
+}
+
+.prose {
+  @apply text-gray-200;
+}
+
+.prose a {
+  @apply text-blue-400 hover:text-blue-300;
+}
+
+.prose code {
+  @apply bg-black/30 rounded px-1 py-0.5;
+}
+
+.prose pre {
+  @apply bg-black/30 p-4 rounded-lg;
+}
+
+.filter-section {
+  @apply backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg p-4;
 }

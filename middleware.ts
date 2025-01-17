@@ -1,21 +1,31 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
+import { NextRequestWithAuth } from 'next-auth/middleware'
 
-export function middleware(request: NextRequest) {
-  // Only run this middleware for API routes
-  if (request.nextUrl.pathname.startsWith("/api/")) {
-    const response = NextResponse.next();
-
-    response.headers.set("Access-Control-Allow-Origin", "*");
-    response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type");
-
-    return response;
+export async function middleware(request: NextRequestWithAuth) {
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  })
+  
+  // Protect /demo routes
+  if (request.nextUrl.pathname.startsWith('/demo')) {
+    if (!token) {
+      // Redirect unauthenticated users to login page
+      const loginUrl = new URL('/auth/signin', request.url)
+      loginUrl.searchParams.set('callbackUrl', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+    // Allow authenticated users to access the demo
+    return NextResponse.next()
   }
 
-  return NextResponse.next();
+  // Allow all other routes
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: "/api/:path*",
-};
+  matcher: [
+    '/demo/:path*'
+  ]
+}
