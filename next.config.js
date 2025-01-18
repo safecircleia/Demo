@@ -20,10 +20,6 @@ const nextConfig = {
     images: {
       domains: ['avatars.githubusercontent.com'], // For GitHub avatar images
     },
-    // Add experimental features for authentication
-    experimental: {
-      serverActions: true,
-    },
   };
   
   module.exports = nextConfig;

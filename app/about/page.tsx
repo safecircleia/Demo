@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Github, Mail, Shield, ExternalLink } from "lucide-react";
+import { Github, Mail, ExternalLink } from "lucide-react";
 
 export default function About() {
   return (

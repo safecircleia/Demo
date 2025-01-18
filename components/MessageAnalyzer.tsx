@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -169,12 +170,18 @@ export default function MessageAnalyzer() {
                     {/* Status and actions row */}
                     <div className="flex items-center justify-between">
                       <Badge variant={
-                        message.prediction?.classification === "safe" ? "success" : 
-                        message.prediction?.classification === "malicious" ? "destructive" :
-                        message.prediction?.classification === "suspicious" ? "warning" : 
-                        "secondary"
+                        message.prediction?.classification === "SAFE" ? "secondary" : 
+                        message.prediction?.classification === "DANGEROUS" ? "destructive" :
+                        message.prediction?.classification === "SUSPICIOUS" ? "outline" : 
+                        "default"
                       }
-                      className="font-medium"
+                      className={cn(
+                        "font-medium",
+                        message.prediction?.classification === "SAFE" ? "bg-green-500/10 text-green-500" :
+                        message.prediction?.classification === "DANGEROUS" ? "bg-red-500/10 text-red-500" :
+                        message.prediction?.classification === "SUSPICIOUS" ? "bg-yellow-500/10 text-yellow-500" :
+                        "bg-gray-500/10 text-gray-500"
+                      )}
                       >
                         {message.prediction?.classification 
                           ? message.prediction.classification.charAt(0).toUpperCase() + message.prediction.classification.slice(1)
@@ -196,8 +203,16 @@ export default function MessageAnalyzer() {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              setSelectedJson(JSON.stringify(JSON.parse(message.prediction.rawResponse), null, 2));
-                              setShowJsonDialog(true);
+                              if (message.prediction?.rawResponse) {
+                                try {
+                                  const parsedJson = JSON.parse(message.prediction.rawResponse);
+                                  setSelectedJson(JSON.stringify(parsedJson, null, 2));
+                                  setShowJsonDialog(true);
+                                } catch (error) {
+                                  console.error('Failed to parse raw response:', error);
+                                  // Handle the error appropriately
+                                }
+                              }
                             }}
                             className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-300"
                           >

@@ -29,7 +29,7 @@ export default function NotFound() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="text-lg text-gray-400 mb-8 leading-relaxed"
           >
-            The page you're looking for doesn't exist or has been moved.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved.
           </motion.p>
 
           <motion.div

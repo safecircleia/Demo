@@ -26,20 +26,17 @@ export function WarningDialog() {
         <div className="flex flex-col items-center justify-center space-y-6">
           <DialogHeader className="w-full flex flex-col items-center">
             <DialogTitle className="
-              text-4xl 
-              font-bold 
-              mb-6
-              bg-clip-text 
-              text-transparent 
-              bg-gradient-to-r 
-              from-white 
-              via-gray-300 
-              to-white 
+              text-4xl
+              font-bold
+              bg-gradient-to-r
+              from-red-500/80
+              via-red-400/60
+              to-red-500/80
+              bg-clip-text
+              text-transparent
               animate-shimmer
-              text-center
-              mx-auto
             ">
-              Safety Warning
+              Warning
             </DialogTitle>
             <DialogDescription className="space-y-4 mt-4 text-gray-300 text-center px-4">
               <p className="text-lg leading-relaxed">

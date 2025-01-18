@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { features } from "@/lib/data";
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
 export default function Home() {
   return (
@@ -22,7 +23,7 @@ export default function Home() {
               <Link href="/changelog">
                 <Chip>
                   <span className="flex items-center gap-2">
-                    ✨ See what's new <ArrowRight className="w-3 h-3" />
+                    ✨ See what&apos;s new <ArrowRight className="w-3 h-3" />
                   </span>
                 </Chip>
               </Link>
@@ -40,7 +41,7 @@ export default function Home() {
                 Protecting Online
               </span>
               <br />
-              <span className="inline-block bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-300 to-white animate-shimmer">
+              <span className="inline-block bg-clip-text text-transparent bg-gradient-to-r from-white via-white-300 to-white animate-shimmer">
                 Conversations with AI
               </span>
             </motion.h1>
@@ -58,19 +59,16 @@ export default function Home() {
               transition={{ delay: 0.4, duration: 0.8 }}
               className="flex gap-4 justify-center"
             >
-              <Link href="/demo">
+              <Link href="/demo" className="w-[145px]">
+                <RainbowButton className="w-full h-[52px] px-4 text-lg font-bold">
+                  Try Demo <ArrowRight className="ml-2 h-5 w-5" />
+                </RainbowButton>
+              </Link>
+              <Link href="/about" className="w-[160px]">
                 <Button
                   size="lg"
-                  className="bg-white text-black hover:bg-gray-200 transition-colors px-8 py-6 text-lg"
-                >
-                  Try Demo <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/about">
-                <Button 
-                  size="lg"
                   variant="outline" 
-                  className="border-white/20 hover:bg-white/10 px-8 py-6 text-lg"
+                  className="w-full h-[52px] px-4 text-lg border-white/20 hover:bg-white/10"
                 >
                   Learn More
                 </Button>

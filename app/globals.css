@@ -137,6 +137,20 @@
 /* Add these new animations and gradients */
 @keyframes shimmer {
   0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background-size: 200% auto;
+}
+
+@keyframes shimmer {
+  0% {
     background-position: -1000px 0;
   }
   100% {
@@ -246,4 +260,146 @@
 
 .filter-section {
   @apply backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg p-4;
+}
+
+.rainbow-button {
+  background: linear-gradient(
+    in lch longer hue,
+    rgb(255, 0, 0),
+    rgb(255, 166, 0),
+    rgb(255, 251, 0),
+    rgb(0, 255, 0),
+    rgb(0, 0, 255),
+    rgb(255, 0, 255),
+    rgb(255, 0, 0)
+  );
+  background-size: 200% 100%;
+  animation: rainbow 8s linear infinite;
+  transition: all 0.3s ease;
+}
+
+.rainbow-button:hover {
+  animation: rainbow 2s linear infinite;
+  animation-composition: add;
+}
+
+@keyframes rainbow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* Add these new styles */
+.rainbow-explode-button {
+  --border: rgba(255, 255, 255, 0.15);
+  --base: oklch(70% 0.155 360);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  padding: 0;
+  background: linear-gradient(light-dark(#fff, #000) 0 0) padding-box,
+    linear-gradient(0deg, transparent 0, var(--border) 18px) border-box,
+    linear-gradient(in lch longer hue 90deg, var(--base) 0 0) border-box 0 0 / 400% 100%;
+}
+
+.rainbow-explode-button span:not(:last-of-type) {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: inherit;
+  opacity: 0;
+}
+
+.rainbow-explode-button span:last-of-type {
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.rainbow-explode-button::before {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  filter: blur(10px) brightness(1.25);
+  inset: 60% 0 0 0;
+  border-radius: 50% 50% 6px 6px / 50% 50% 6px 6px;
+  transform-origin: 50% 25%;
+  opacity: 1;
+  scale: 0.6 0.4;
+  transition: scale 0.24s;
+  background: linear-gradient(#0000 0 0), linear-gradient(#0000 0 0),
+    linear-gradient(in lch longer hue 90deg, var(--base) 0 0) border-box 0 0 / 400% 100%;
+}
+
+.rainbow-explode-button:hover::before {
+  scale: 1.1 1.25;
+}
+
+.rainbow-explode-button,
+.rainbow-explode-button span:nth-of-type(1),
+.rainbow-explode-button::before,
+.rainbow-explode-button::after {
+  animation: rainbow 12s infinite linear,
+    rainbow 6s infinite linear var(--state, paused);
+  animation-composition: add;
+}
+
+.rainbow-explode-button:hover {
+  --state: running;
+}
+
+@keyframes rainbow {
+  to {
+    background-position: 0 0, 0 0, 400% 0;
+  }
+}
+
+.tabs-gradient {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+[data-state=active] {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* Add these custom component styles */
+@layer components {
+  .glass-card {
+    @apply bg-black/20 backdrop-blur-xl border border-white/10 rounded-lg;
+  }
+
+  .glass-input {
+    @apply bg-black/20 border-white/10 focus:border-white/20 focus:ring-white/10 focus:ring-offset-0;
+  }
+
+  .glass-button {
+    @apply bg-white/10 hover:bg-white/20 border-white/10 transition-colors backdrop-blur-sm;
+  }
+
+  .glass-tabs {
+    @apply bg-black/20 backdrop-blur-sm border-white/10;
+  }
+
+  .tab-active {
+    @apply bg-white/10 backdrop-blur-sm;
+  }
+}
+
+/* Add gradient text effect */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-300 to-white animate-shimmer;
+}
+
+/* Update tab styling */
+[data-state=active] {
+  @apply bg-white/10 backdrop-blur-sm;
 }
