@@ -1,59 +1,57 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+
+interface FormData {
+  email: string;
+  password: string;
+  accountType: string;
+  familyCode?: string;
+  name: string;
+}
 
 export function OnboardingForm() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
+  const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
-    accountType: "parent" as "parent" | "child",
+    accountType: "",
     familyCode: "",
+    name: ""
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (step < 2) {
+      setStep(step + 1);
+      return;
+    }
 
+    setIsLoading(true);
     try {
-      // Add your API call here to create the user
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      if (response.ok) {
-        // Sign in the user after successful registration
-        await signIn("credentials", {
-          email: formData.email,
-          password: formData.password,
-          callbackUrl: "/dashboard",
-        });
-      } else {
-        throw new Error("Registration failed");
+      if (!response.ok) {
+        throw new Error('Registration failed');
       }
+
+      router.push('/auth/login?registered=true');
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error('Registration error:', error);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const nextStep = () => {
-    if (step < 2) setStep(step + 1);
-    else handleSubmit;
   };
 
   return (
@@ -94,9 +92,9 @@ export function OnboardingForm() {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                className="glass-input"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="glass-input"
                 required
               />
             </div>
@@ -138,12 +136,11 @@ export function OnboardingForm() {
         )}
 
         <Button
-          type="button"
+          type="submit"
           className="w-full glass-button"
-          onClick={step === 2 ? handleSubmit : nextStep}
           disabled={isLoading}
         >
-          {isLoading ? "Loading..." : step === 2 ? "Create Account" : "Next"}
+          {isLoading ? "Creating Account..." : step === 1 ? "Next" : "Create Account"}
         </Button>
       </form>
     </motion.div>

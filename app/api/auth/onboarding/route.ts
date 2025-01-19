@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server'
-import getServerSession from 'next-auth'
-import { authOptions } from 'next-auth'
-import { prisma } from '../../../../lib/prisma'
+import { auth } from "@/auth"
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
   
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
   try {
     const { step, accountType } = await req.json()
+
+    // Validate step and accountType
+    if (typeof step !== 'number' || !['parent', 'child'].includes(accountType)) {
+      return new NextResponse('Invalid input', { status: 400 })
+    }
 
     const onboarding = await prisma.onboardingStatus.upsert({
       where: {
@@ -19,22 +23,24 @@ export async function POST(req: Request) {
       },
       update: {
         step,
-        accountType,
         completed: step === 2
       },
       create: {
-        userId: session.user.id,
+        userId: session.user.id, // Now we know this is definitely defined
         step,
-        accountType,
         completed: false
       }
     })
 
+    // Update user account type separately
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { accountType }
+    })
+
     return NextResponse.json(onboarding)
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to update onboarding status' },
-      { status: 500 }
-    )
+    console.error('[ONBOARDING_ERROR]', error)
+    return new NextResponse('Internal Error', { status: 500 })
   }
 }

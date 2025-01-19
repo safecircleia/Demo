@@ -1,22 +1,26 @@
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
+import { AccountType, AccountTypeSelectorProps } from '@/types/auth'
+import { Button } from '@/components/ui/button'
 
-interface AccountTypeSelectorProps {
-  value: 'parent' | 'child'
-  onChange: (value: 'parent' | 'child') => void
-}
-
-export default function AccountTypeSelector({ value, onChange }: AccountTypeSelectorProps) {
+export function AccountTypeSelector({ onSelect }: AccountTypeSelectorProps) {
   return (
-    <RadioGroup value={value} onValueChange={onChange as (value: string) => void}>
-      <div className="flex items-center space-x-2">
-        <RadioGroupItem value="parent" id="parent" />
-        <Label htmlFor="parent">I am a Parent</Label>
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold gradient-text">Choose Account Type</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <Button
+          type="button"
+          className="glass-button"
+          onClick={() => onSelect('parent')}
+        >
+          Parent
+        </Button>
+        <Button
+          type="button"
+          className="glass-button"
+          onClick={() => onSelect('child')}
+        >
+          Child
+        </Button>
       </div>
-      <div className="flex items-center space-x-2">
-        <RadioGroupItem value="child" id="child" />
-        <Label htmlFor="child">I am a Child</Label>
-      </div>
-    </RadioGroup>
+    </div>
   )
 }

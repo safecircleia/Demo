@@ -1,33 +1,52 @@
-import NextAuth, { type NextAuthConfig } from "next-auth"
+import NextAuth, { type NextAuthConfig, type DefaultSession, User } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { compare } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { JWT } from "next-auth/jwt"
 
-// Extend the Session interface
-interface ExtendedSession extends DefaultSession {
-  user: {
-    id: string
-  } & DefaultSession["user"]
+// Extend JWT type
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string;
+    accountType?: string;
+  }
+}
+
+// Extend User type to include accountType
+declare module "next-auth" {
+  interface User {
+    accountType: string;
+  }
+  interface Session extends DefaultSession {
+    user: {
+      id: string;
+      accountType: string;
+    } & DefaultSession["user"]
+  }
 }
 
 export const config = {
+  adapter: PrismaAdapter(prisma) as any, // Temporary type assertion to resolve conflict
   providers: [
     Credentials({
-      async authorize(credentials) {
+      async authorize(credentials: Partial<Record<string, unknown>>) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email: credentials.email as string }
         })
 
         if (!user || !user.password) {
           return null
         }
 
-        const isValid = await compare(credentials.password, user.password)
+        const isValid = await compare(
+          credentials.password as string,
+          user.password
+        )
 
         if (!isValid) {
           return null
@@ -56,9 +75,9 @@ export const config = {
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id
-        session.user.accountType = token.accountType
+      if (token && session.user) {
+        if (token.id) session.user.id = token.id
+        if (token.accountType) session.user.accountType = token.accountType
       }
       return session
     },
@@ -82,11 +101,10 @@ export const config = {
       return baseUrl
     }
   },
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt"
   },
   debug: process.env.NODE_ENV === "development",
 } satisfies NextAuthConfig
 
-export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth(config)
+export const { handlers, auth, signIn, signOut } = NextAuth(config)

@@ -5,19 +5,25 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
 }
 
 model User {
   id            String         @id @default(cuid())
   name          String?
   email         String        @unique
-  password      String?       // Changed from hashedPassword
+  password      String
   emailVerified DateTime?
   image         String?
   familyCode    String?
   accountType   String       @default("parent")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  
+  // Family relationships
+  familyMembers User[]    @relation("FamilyMembers")
+  family        User[]    @relation("FamilyMembers")
+
   accounts      Account[]
   sessions      Session[]
   authenticators Authenticator[]
@@ -60,9 +66,10 @@ model Authenticator {
 }
 
 model OnboardingStatus {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  completed Boolean  @default(false)
-  step      Int      @default(1)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  step        Int      @default(1)
+  completed   Boolean  @default(false)
+  accountType String?  // Added this field
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
