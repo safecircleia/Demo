@@ -13,7 +13,7 @@ model User {
   name          String?
   email         String        @unique
   password      String
-  emailVerified DateTime?
+  emailVerified Boolean
   image         String?
   familyCode    String?
   accountType   String       @default("parent")
@@ -28,6 +28,15 @@ model User {
   sessions      Session[]
   authenticators Authenticator[]
   onboarding    OnboardingStatus?
+
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?
+  recoveryBackupCodes String[]  @default([])
+  currentChallenge    String?
+  passkeys            Passkey[]
+
+  githubUsername      String?
+  githubId            String?   @unique
 }
 
 model Account {
@@ -36,12 +45,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -72,4 +81,15 @@ model OnboardingStatus {
   completed   Boolean  @default(false)
   accountType String?  // Added this field
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  email      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@index([email])
+  @@map("verification_token")
 }

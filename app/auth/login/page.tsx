@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Key, Github } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -41,6 +41,26 @@ function LoginForm() {
       router.refresh();
     } catch (error) {
       setError("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setIsLoading(true);
+    try {
+      const result = await signIn("passkey", {
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Passkey authentication failed");
+      } else if (result?.url) {
+        router.push(result.url);
+      }
+    } catch (error) {
+      console.error("Passkey login failed:", error);
+      setError("Authentication failed");
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +154,37 @@ function LoginForm() {
                 Get Started
               </Link>
             </div>
+
+            <div className="relative mt-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full glass-button mt-4"
+              onClick={handlePasskeyLogin}
+              disabled={isLoading}
+            >
+              <Key className="mr-2 h-4 w-4" />
+              {isLoading ? "Signing in..." : "Sign in with Passkey"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4"
+              onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+            >
+              <Github className="mr-2 h-4 w-4" />
+              Continue with GitHub
+            </Button>
           </motion.div>
         </motion.div>
       </div>

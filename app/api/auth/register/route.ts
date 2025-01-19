@@ -13,8 +13,24 @@ export type RegisterError = {
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name, accountType } = await req.json();
+    const { email, password, name, accountType, verificationCode } = await req.json();
     const errors: RegisterError = {};
+
+    // Verify the code first
+    const verification = await db.verificationToken.findFirst({
+      where: {
+        email,
+        token: verificationCode,
+        expires: { gt: new Date() }
+      }
+    });
+
+    if (!verification) {
+      return NextResponse.json(
+        { errors: { general: ["Invalid or expired verification code"] } },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!email) {
@@ -66,11 +82,22 @@ export async function POST(req: Request) {
         password: hashedPassword,
         accountType,
         familyCode,
+        emailVerified: true, // Changed from DateTime to Boolean
         onboarding: {
           create: {
             completed: false,
             step: 1
           }
+        }
+      }
+    });
+
+    // Delete the verification token after successful registration
+    await db.verificationToken.delete({
+      where: {
+        identifier_token: {
+          identifier: verification.identifier,
+          token: verification.token
         }
       }
     });

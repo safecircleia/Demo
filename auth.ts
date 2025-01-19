@@ -5,32 +5,11 @@ import { compare } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { JWT } from "next-auth/jwt"
 
-// Extend JWT type
-declare module "next-auth/jwt" {
-  interface JWT {
-    id?: string;
-    accountType?: string;
-  }
-}
-
-// Extend User type to include accountType
-declare module "next-auth" {
-  interface User {
-    accountType: string;
-  }
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      accountType: string;
-    } & DefaultSession["user"]
-  }
-}
-
 export const config = {
   adapter: PrismaAdapter(prisma) as any, // Temporary type assertion to resolve conflict
   providers: [
     Credentials({
-      async authorize(credentials: Partial<Record<string, unknown>>) {
+      async authorize(credentials: Partial<Record<string, unknown>>): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
@@ -56,7 +35,9 @@ export const config = {
           id: user.id,
           email: user.email,
           name: user.name,
-          accountType: user.accountType
+          accountType: user.accountType,
+          emailVerified: user.emailVerified ? new Date() : null, // Convert boolean to Date | null
+          githubUsername: user.githubUsername ?? undefined // Add this optional field
         }
       }
     })
@@ -68,9 +49,10 @@ export const config = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
+      if (user?.id) {  // Add null check for id
         token.id = user.id
         token.accountType = user.accountType
+        token.emailVerified = !!user.emailVerified  // Convert to boolean
       }
       return token
     },
@@ -78,6 +60,7 @@ export const config = {
       if (token && session.user) {
         if (token.id) session.user.id = token.id
         if (token.accountType) session.user.accountType = token.accountType
+        session.user.emailVerified = token.emailVerified ? new Date() : null
       }
       return session
     },

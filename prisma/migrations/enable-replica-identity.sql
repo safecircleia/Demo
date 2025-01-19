@@ -1,0 +1,1 @@
+ALTER TABLE "verification_token" REPLICA IDENTITY FULL;
