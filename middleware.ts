@@ -1,14 +1,18 @@
-import { NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
-import { NextRequest } from 'next/server'
+import { getToken } from "next-auth/jwt"
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
+  // Get the token using the secret
   const token = await getToken({ 
     req: request,
     secret: process.env.NEXTAUTH_SECRET
   })
-  
-  // Protect /demo routes
+
+  // Debug log (will appear in Vercel logs)
+  console.log('Middleware token:', token)
+  console.log('Path:', request.nextUrl.pathname)
+
   if (request.nextUrl.pathname.startsWith('/demo')) {
     if (!token || token.accountType !== "parent") {
       // Redirect unauthenticated users to login page
@@ -16,16 +20,15 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set('callbackUrl', request.url)
       return NextResponse.redirect(loginUrl)
     }
-    // Allow authenticated users to access the demo
     return NextResponse.next()
   }
 
-  // Allow all other routes
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
-    '/demo/:path*'
+    '/demo/:path*',
+    '/auth/login'  // Add this to handle login redirects
   ]
 }
