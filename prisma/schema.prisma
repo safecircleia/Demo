@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String        @unique
+  password      String?       // Changed from hashedPassword
+  emailVerified DateTime?
+  image         String?
+  familyCode    String?
+  accountType   String       @default("parent")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  authenticators Authenticator[]
+  onboarding    OnboardingStatus?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Authenticator {
+  id              String  @id @default(cuid())
+  userId          String
+  credentialId    String  @unique
+  publicKey       Bytes
+  counter         BigInt
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OnboardingStatus {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  completed Boolean  @default(false)
+  step      Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

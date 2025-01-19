@@ -10,9 +10,9 @@ export async function middleware(request: NextRequest) {
   
   // Protect /demo routes
   if (request.nextUrl.pathname.startsWith('/demo')) {
-    if (!token) {
+    if (!token || token.accountType !== "parent") {
       // Redirect unauthenticated users to login page
-      const loginUrl = new URL('/auth/signin', request.url)
+      const loginUrl = new URL('/auth/login', request.url)
       loginUrl.searchParams.set('callbackUrl', request.url)
       return NextResponse.redirect(loginUrl)
     }
