@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CheckCircle, ArrowLeft } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card } from "@/components/ui/card";
 
 interface FormData {
   email: string;
   password: string;
   name: string;
-  accountType: string;
+  accountType: "parent" | "child";
   familyCode?: string;
 }
 
@@ -118,8 +120,41 @@ export function OnboardingForm() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
+              className="space-y-6"
             >
+              <div className="space-y-4">
+                <Label>Account Type</Label>
+                <RadioGroup
+                  value={formData.accountType}
+                  onValueChange={(value: "parent" | "child") => 
+                    setFormData({ ...formData, accountType: value })}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <Card className="relative flex items-center space-x-2 p-4">
+                    <RadioGroupItem value="parent" id="parent" />
+                    <Label htmlFor="parent" className="font-normal">Parent</Label>
+                  </Card>
+                  <Card className="relative flex items-center space-x-2 p-4">
+                    <RadioGroupItem value="child" id="child" />
+                    <Label htmlFor="child" className="font-normal">Child</Label>
+                  </Card>
+                </RadioGroup>
+              </div>
+
+              {formData.accountType === "child" && (
+                <div className="space-y-2">
+                  <Label htmlFor="familyCode">Family Code</Label>
+                  <Input
+                    id="familyCode"
+                    className="glass-input"
+                    value={formData.familyCode}
+                    onChange={(e) => setFormData({ ...formData, familyCode: e.target.value })}
+                    placeholder="Enter your family code"
+                    required={formData.accountType === "child"}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input
@@ -130,7 +165,6 @@ export function OnboardingForm() {
                   required
                 />
               </div>
-              {/* ...existing account type selection... */}
             </motion.div>
           )}
 
@@ -214,7 +248,8 @@ export function OnboardingForm() {
             <Button
               type="submit"
               className="w-full glass-button"
-              disabled={isLoading || (step === 3 && !verificationCode)}
+              disabled={isLoading || (step === 3 && !verificationCode) || 
+                (step === 1 && formData.accountType === "child" && !formData.familyCode)}
             >
               {isLoading 
                 ? "Processing..." 
