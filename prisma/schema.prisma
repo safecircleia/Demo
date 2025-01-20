@@ -33,7 +33,6 @@ model User {
   twoFactorSecret     String?
   recoveryBackupCodes String[]  @default([])
   currentChallenge    String?
-  passkeys            Passkey[]
 
   githubUsername      String?
   githubId            String?   @unique
