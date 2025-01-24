@@ -403,3 +403,8 @@
 [data-state=active] {
   @apply bg-white/10 backdrop-blur-sm;
 }
+
+.animate-gradient {
+  background-size: 400% 400%;
+  animation: gradient 8s ease infinite;
+}

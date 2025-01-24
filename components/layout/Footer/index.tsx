@@ -5,6 +5,8 @@ import { Github, Twitter, Linkedin, GitBranch } from "lucide-react";
 import { motion } from 'framer-motion';
 import styles from './styles.module.scss';
 import { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const footerLinks = [
   {
@@ -33,16 +35,14 @@ const footerLinks = [
   }
 ];
 
-export default function Footer() {
-  const [gitInfo, setGitInfo] = useState<{
-    branch: string;
-    version: string;
-    commit: string;
-  }>({ 
-    branch: '', 
-    version: process.env.NEXT_PUBLIC_APP_VERSION || '',
-    commit: ''
-  });
+const socialLinks = [
+  { href: "https://github.com/tresillo2017", icon: Github },
+  { href: "https://twitter.com/tresillo2017", icon: Twitter },
+  { href: "https://linkedin.com/in/tresillo2017", icon: Linkedin }
+];
+
+export function Footer() {
+  const [gitInfo, setGitInfo] = useState({ branch: '', commit: '', version: '' });
 
   useEffect(() => {
     async function fetchVersionInfo() {
@@ -62,70 +62,82 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className={styles.footer}>
-      <div className="container mx-auto px-4 py-12">
-        {/* Footer links grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          {footerLinks.map((section) => (
-            <div key={section.title}>
-              <h3 className="mb-4 text-sm font-semibold text-slate-200">
-                {section.title}
+    <footer className="">
+      <div className="bg-black/50 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-12 space-y-8">
+          {/* Main Footer Content */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {/* Company Info */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                SafeCircle
               </h3>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.href}>
-                    <Link 
-                      href={link.href}
-                      className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-sm text-slate-400 max-w-xs">
+                Protecting families online with advanced AI-powered monitoring and threat detection.
+              </p>
             </div>
-          ))}
-        </div>
 
-        {/* Version info - Now above social icons */}
-        <div className="flex justify-center mb-6">
-          <Link 
-            href={`https://github.com/tresillo2017/safecircle/tree/${gitInfo.branch}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors bg-white/5 rounded-full"
-          >
-            <GitBranch className="h-4 w-4" />
-            <span>v{gitInfo.version} ({gitInfo.branch} @ {gitInfo.commit})</span>
-          </Link>
-        </div>
+            {/* Footer Links Grid */}
+            {footerLinks.map((section) => (
+              <div key={section.title}>
+                <h4 className="mb-4 text-sm font-semibold text-slate-200">
+                  {section.title}
+                </h4>
+                <ul className="space-y-3">
+                  {section.links.map((link) => (
+                    <li key={link.href}>
+                      <Link 
+                        href={link.href}
+                        className="group flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
 
-        {/* Social icons */}
-        <div className="flex justify-center space-x-6">
-          <Link
-            href="https://github.com/tresillo2017/safecircle"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <Github className="h-6 w-6" />
-          </Link>
-          <a 
-            href="https://twitter.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <Twitter size={20} />
-          </a>
-          <a 
-            href="https://linkedin.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <Linkedin size={20} />
-          </a>
+          {/* Bottom Bar */}
+          <div className="pt-8 mt-8 border-t border-white/10">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              {/* Version Info */}
+              <Link 
+                href={`https://github.com/tresillo2017/safecircle/tree/${gitInfo.branch}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
+              >
+                <GitBranch className="h-4 w-4" />
+                <span>v{process.env.NEXT_PUBLIC_VERSION}</span>
+                <span className="text-slate-500">•</span>
+                <span>{gitInfo.branch}</span>
+                <span className="text-slate-500">@</span>
+                <span>{gitInfo.commit}</span>
+              </Link>
+
+              {/* Social Links */}
+              <div className="flex items-center gap-4">
+                {socialLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
+                  >
+                    <link.icon className="h-5 w-5" />
+                  </Link>
+                ))}
+              </div>
+
+              {/* Copyright */}
+              <p className="text-sm text-slate-400">
+                © {new Date().getFullYear()} SafeCircle. All rights reserved.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

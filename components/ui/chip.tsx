@@ -1,14 +1,35 @@
 import { motion } from "framer-motion";
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
 
-export function Chip({ children }: { children: React.ReactNode }) {
+const chipVariants = cva(
+  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+  {
+    variants: {
+      variant: {
+        success: "bg-green-500/10 text-green-500 border border-green-500/20",
+        info: "bg-blue-500/10 text-blue-500 border border-blue-500/20",
+        warning: "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20",
+        purple: "bg-purple-500/10 text-purple-500 border border-purple-500/20",
+      },
+      size: {
+        sm: "text-xs px-1.5 py-0.5",
+        default: "px-2.5 py-0.5",
+      },
+    },
+    defaultVariants: {
+      variant: "success",
+      size: "default",
+    },
+  }
+)
+
+interface ChipProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof chipVariants> {}
+
+export function Chip({ className, variant, size, ...props }: ChipProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-      className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm cursor-pointer transition-colors"
-    >
-      <span className="text-sm font-medium text-white/80">{children}</span>
-    </motion.div>
-  );
+    <div className={cn(chipVariants({ variant, size }), className)} {...props} />
+  )
 }

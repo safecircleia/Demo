@@ -9,51 +9,54 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String?
-  email         String        @unique
-  password      String
-  emailVerified Boolean
-  image         String?
-  familyCode    String?
-  accountType   String       @default("parent")
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                String    @id @default(cuid())
+  name              String?
+  email             String?   @unique
+  emailVerified     DateTime?
+  image             String?
+  accountType       String    @default("user")
+  onboardingComplete Boolean  @default(false)
+  familyCode        String?
+  password      String?
+  familyId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   
-  // Family relationships
-  familyMembers User[]    @relation("FamilyMembers")
-  family        User[]    @relation("FamilyMembers")
-
+  // Auth.js relations
   accounts      Account[]
   sessions      Session[]
   authenticators Authenticator[]
-  onboarding    OnboardingStatus?
+  
+  // Custom relations
+  apiKeys       ApiKey[]
+  familyMembers User[]    @relation("FamilyMembers")
+  family        User?     @relation("FamilyMembers", fields: [familyId], references: [id])
+  onboardingStatus OnboardingStatus?
 
-  twoFactorEnabled    Boolean   @default(false)
-  twoFactorSecret     String?
-  recoveryBackupCodes String[]  @default([])
-  currentChallenge    String?
-
-  githubUsername      String?
-  githubId            String?   @unique
+  @@map("users")
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?  @db.Text
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
 model Session {
@@ -62,33 +65,59 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
-model Authenticator {
-  id              String  @id @default(cuid())
-  userId          String
-  credentialId    String  @unique
-  publicKey       Bytes
-  counter         BigInt
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-model OnboardingStatus {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  step        Int      @default(1)
-  completed   Boolean  @default(false)
-  accountType String?  // Added this field
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("sessions")
 }
 
 model VerificationToken {
   identifier String
   token      String   @unique
-  email      String
   expires    DateTime
 
-  @@unique([identifier, token])
-  @@index([email])
-  @@map("verification_token")
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Authenticator {
+  id                  String  @id @default(cuid())
+  credentialID        String  @unique
+  userId              String
+  providerAccountId   String
+  credentialPublicKey String
+  counter             Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, credentialID])
+  @@map("authenticators")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  key        String    @unique
+  createdAt  DateTime  @default(now())
+  lastUsed   DateTime?
+  usageLimit Int       @default(1000)
+  usageCount Int       @default(0)
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String
+
+  @@map("api_keys")
+}
+
+model OnboardingStatus {
+  id        String   @id @default(cuid())
+  completed Boolean  @default(false)
+  step      Int      @default(1)
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("onboarding_status")
 }

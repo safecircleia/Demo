@@ -1,29 +1,39 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma' // Adjust the import path as necessary
 
-export default auth((req) => {
-  // Allow auth-related endpoints
-  if (req.nextUrl.pathname.startsWith('/api/auth')) {
-    return NextResponse.next();
-  }
+export default auth(async (req) => {
+  const { nextUrl } = req
+  const session = await auth()
+  const isLoggedIn = !!session?.user
+  const isAuthPage = nextUrl.pathname.startsWith('/auth')
+  const isOnboardingPage = nextUrl.pathname === '/auth/onboarding'
 
-  const isLoggedIn = !!req.auth
-  const isAuthPage = req.nextUrl.pathname.startsWith('/auth')
-  const isProtectedRoute = ['/dashboard', '/demo', '/profile'].some(route => 
-    req.nextUrl.pathname.startsWith(route)
-  )
-  
-  // Allow passkey operations to proceed
-  if (req.nextUrl.searchParams.has('action')) {
+  // Allow auth endpoints
+  if (nextUrl.pathname.startsWith('/api/auth')) {
     return NextResponse.next()
   }
 
-  if (isAuthPage && isLoggedIn) {
-    return Response.redirect(new URL('/dashboard', req.nextUrl))
+  // Redirect to onboarding if needed
+  if (isLoggedIn && !isOnboardingPage && !isAuthPage) {
+    const user = session.user
+    // Check both session and DB onboarding status
+    if (user?.onboardingComplete === false) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { onboardingStatus: true }
+      })
+      
+      // Only redirect if both session and DB show incomplete onboarding
+      if (!dbUser?.onboardingStatus?.completed) {
+        return NextResponse.redirect(new URL('/auth/onboarding', nextUrl))
+      }
+    }
   }
 
-  if (isProtectedRoute && !isLoggedIn) {
-    return Response.redirect(new URL('/auth/login', req.nextUrl))
+  // Handle other auth redirects
+  if (isAuthPage && isLoggedIn && !isOnboardingPage) {
+    return NextResponse.redirect(new URL('/dashboard', nextUrl))
   }
 
   return NextResponse.next()

@@ -5,18 +5,19 @@ import { Card } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { FamilyMembers } from "@/components/dashboard/FamilyMembers"
 import { FamilyCode } from "@/components/dashboard/FamilyCode"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Bell } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 
 export default async function DashboardPage() {
   const session = await auth()
-
   if (!session?.user) {
     redirect("/auth/login")
   }
 
-  // Fetch user with family members
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { email: session.user.email ?? undefined },
     include: {
       familyMembers: {
         select: {
@@ -31,30 +32,40 @@ export default async function DashboardPage() {
   })
 
   if (!user) {
-    redirect("/auth/login")
+    redirect("/onboarding")
   }
 
   return (
-    <div className="container mx-auto p-8 pt-32">
+    <>
       <DashboardHeader user={user} />
       
+      <Card className="mb-6 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Recent Activity</h2>
+          <Bell className="h-5 w-5 text-gray-400" />
+        </div>
+        <div className="space-y-4">
+          {/* Activity placeholders */}
+          {/* ...existing activity items... */}
+        </div>
+      </Card>
+
       {user.accountType === 'parent' && (
         <div className="space-y-6">
           <FamilyCode familyCode={user.familyCode || ''} />
-          
-          <Card className="glass-card p-6">
-            <h2 className="text-2xl font-semibold mb-4">Family Members</h2>
-            <FamilyMembers members={user.familyMembers} />
+          <Card className="p-6">
+            <FamilyMembers 
+              members={user.familyMembers.map(member => ({
+                id: member.id,
+                name: member.name || 'Unnamed Member',
+                email: member.email || '',
+                image: member.image || '',
+                accountType: member.accountType
+              }))} 
+            />
           </Card>
         </div>
       )}
-
-      {user.accountType === 'child' && (
-        <Card className="glass-card p-6">
-          <h2 className="text-2xl font-semibold mb-4">My Activity</h2>
-          {/* Child dashboard content will go here */}
-        </Card>
-      )}
-    </div>
+    </>
   )
 }

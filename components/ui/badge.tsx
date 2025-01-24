@@ -1,22 +1,24 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+          "border-primary/20 bg-primary/20 text-primary shadow-sm hover:bg-primary/30",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-white/10 bg-black/20 text-white hover:bg-white/10",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
-        success: "border-transparent bg-success text-success-foreground shadow hover:bg-success/80",
-        warning: "border-transparent bg-warning text-warning-foreground shadow hover:bg-warning/80",
+          "border-destructive/20 bg-destructive/20 text-destructive shadow-sm hover:bg-destructive/30",
+        outline: 
+          "border-white/10 bg-black/20 text-white hover:bg-white/10",
+        success: 
+          "border-green-500/20 bg-green-500/20 text-green-500 shadow-sm hover:bg-green-500/30",
+        warning: 
+          "border-yellow-500/20 bg-yellow-500/20 text-yellow-500 shadow-sm hover:bg-yellow-500/30",
       },
     },
     defaultVariants: {

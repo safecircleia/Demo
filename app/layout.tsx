@@ -4,7 +4,7 @@ import BackgroundGradient from "@/components/BackgroundGradient";
 import { GeistSans } from "./fonts";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer/index";
+import { Footer } from "@/components/layout/Footer/index";
 import { AuthProvider } from "@/components/providers/auth-provider";
 
 export const metadata: Metadata = {

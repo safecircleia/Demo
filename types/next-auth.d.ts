@@ -1,20 +1,15 @@
-import NextAuth from "next-auth"
+import NextAuth, { DefaultUser } from "next-auth"
 
 declare module "next-auth" {
-  interface User {
+  interface User extends DefaultUser {
     id: string
     accountType: string
-    emailVerified: Date | null
-    githubUsername?: string
+    onboardingComplete: boolean
+    familyCode: string | null
   }
 
   interface Session {
-    user: User & {
-      id: string
-      accountType: string
-      emailVerified: Date | null
-      githubUsername?: string
-    }
+    user: User
   }
 }
 
