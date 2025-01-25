@@ -146,7 +146,10 @@ export default function FamilySettingsPage() {
                   </div>
                 </div>
               ) : (
-                <FamilyMembers members={members} />
+                <FamilyMembers 
+                  members={members} 
+                  currentUserRole={session?.user?.familyRole || 'MEMBER'} 
+                />
               )}
               <div className="flex justify-end">
                 <Button className="w-full">Invite New Member</Button>

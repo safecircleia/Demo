@@ -3,40 +3,46 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL")
 }
 
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
 model User {
-  id                String    @id @default(cuid())
-  name              String?
-  email             String?   @unique
-  emailVerified     DateTime?
-  image             String?
-  accountType       String    @default("user")
-  onboardingComplete Boolean  @default(false)
-  familyCode        String?
-  password      String?
-  familyId      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  subscriptionPlan String @default("free")
-  subscriptionStatus String @default("active")
-  isBetaUser       Boolean @default(false)
-  
-  // Auth.js relations
-  accounts      Account[]
-  sessions      Session[]
-  authenticators Authenticator[]
-  
-  // Custom relations
-  apiKeys       ApiKey[]
-  familyMembers User[]    @relation("FamilyMembers")
-  family        User?     @relation("FamilyMembers", fields: [familyId], references: [id])
-  onboardingStatus OnboardingStatus?
-  betaFeatures     BetaFeature[]
-  aiSettings     AISettings?
+  id                 String            @id @default(cuid())
+  name               String?
+  email              String?           @unique
+  emailVerified      DateTime?
+  image              String?
+  password           String?
+  accountType        String            @default("user")
+  familyCode         String?
+  familyId           String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  onboardingComplete Boolean           @default(false)
+  subscriptionPlan   String            @default("free")
+  subscriptionStatus String            @default("active")
+  isBetaUser         Boolean           @default(false)
+  aiSettings         AISettings?
+  apiKeys            ApiKey[]
+  betaFeatures       BetaFeature[]
+  accounts           Account[]
+  authenticators     Authenticator[]
+  onboardingStatus   OnboardingStatus?
+  sessions           Session[]
+  family             User?             @relation("FamilyMembers", fields: [familyId], references: [id])
+  familyMembers      User[]            @relation("FamilyMembers")
+  sentInvitations    FamilyInvitation[] @relation("SentInvitations")
+  familyInvitations  FamilyInvitation[] @relation("FamilyInvitations")
+  role               UserRole          @default(MEMBER)
+  familyRole         UserRole          @default(MEMBER)
+  invitations        FamilyInvitation[] @relation("ReceivedInvitations")
 
   @@map("users")
 }
@@ -47,18 +53,16 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?  @db.Text
-  access_token      String?  @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?  @db.Text
+  id_token          String?
   session_state     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -69,10 +73,9 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@map("sessions")
 }
@@ -87,73 +90,92 @@ model VerificationToken {
 }
 
 model Authenticator {
-  id                  String  @id @default(cuid())
-  credentialID        String  @unique
-  userId              String
-  providerAccountId   String
-  credentialPublicKey String
-  counter             Int
+  id                   String  @id @default(cuid())
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
   credentialDeviceType String
   credentialBackedUp   Boolean
-  transports          String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transports           String?
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, credentialID])
   @@map("authenticators")
 }
 
 model ApiKey {
-  id          String    @id @default(cuid())
-  name        String
-  key         String    @unique // This will store the hashed key
-  keyPrefix   String    // Add this field
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  createdAt   DateTime  @default(now())
-  lastUsed    DateTime?
-  usageLimit  Int       @default(1000)
-  usageCount  Int       @default(0)
-  enabled     Boolean   @default(true)
+  id         String    @id @default(cuid())
+  name       String
+  key        String    @unique
+  keyPrefix  String
+  userId     String
+  createdAt  DateTime  @default(now())
+  lastUsed   DateTime?
+  usageLimit Int       @default(1000)
+  usageCount Int       @default(0)
+  enabled    Boolean   @default(true)
+  user       User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([key])
 }
 
 model OnboardingStatus {
-  id        String   @id @default(cuid())
-  completed Boolean  @default(false)
-  step      Int      @default(1)
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
+  id        String  @id @default(cuid())
+  completed Boolean @default(false)
+  step      Int     @default(1)
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id])
 
   @@map("onboarding_status")
 }
 
 model BetaFeature {
-  id          String   @id @default(cuid())
-  featureId   String
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  featureId String
+  userId    String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, featureId])
   @@index([userId])
 }
 
 model AISettings {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  user            User      @relation(fields: [userId], references: [id])
-  modelVersion    String    @default("deepseek")
-  temperature     Float     @default(0.7)
-  maxTokens       Int       @default(2048)
-  safetyLevel     String    @default("balanced")
-  streaming       Boolean   @default(true)
-  timeout         Int       @default(30)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  modelVersion String   @default("deepseek")
+  temperature  Float    @default(0.7)
+  maxTokens    Int      @default(2048)
+  safetyLevel  String   @default("balanced")
+  streaming    Boolean  @default(true)
+  timeout      Int      @default(30)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model FamilyInvitation {
+  id         String   @id @default(cuid())
+  email      String
+  inviterId  String
+  familyId   String
+  familyCode String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  accepted   Boolean  @default(false)
+  status     String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  
+  inviter    User     @relation("SentInvitations", fields: [inviterId], references: [id])
+  family     User     @relation("FamilyInvitations", fields: [familyId], references: [id])
+  invitedId  String?
+  invited    User?    @relation("ReceivedInvitations", fields: [invitedId], references: [id])
+
+  @@index([email])
+  @@index([familyCode])
 }

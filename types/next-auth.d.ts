@@ -6,6 +6,7 @@ declare module "next-auth" {
     accountType: string
     onboardingComplete: boolean
     familyCode: string | null
+    familyRole: "ADMIN" | "MEMBER"  // Add this line
   }
 
   interface Session {

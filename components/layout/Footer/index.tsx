@@ -8,6 +8,13 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+// Add type for version info
+interface VersionInfo {
+  version: string
+  branch: string
+  commit: string
+}
+
 const footerLinks = [
   {
     title: "Product",
@@ -44,6 +51,10 @@ const socialLinks = [
 export function Footer() {
   const [gitInfo, setGitInfo] = useState({ branch: '', commit: '', version: '' });
 
+  // Add at the start of component
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
   useEffect(() => {
     async function fetchVersionInfo() {
       try {
@@ -60,6 +71,19 @@ export function Footer() {
     }
     fetchVersionInfo();
   }, []);
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then(res => res.json())
+      .then((data: VersionInfo) => {
+        setVersionInfo(data)
+        setIsLoading(false)
+      })
+      .catch(err => {
+        console.error('Failed to fetch version info:', err)
+        setIsLoading(false)
+      })
+  }, [])
 
   return (
     <footer className="">
@@ -103,19 +127,21 @@ export function Footer() {
           <div className="pt-8 mt-8 border-t border-white/10">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               {/* Version Info */}
-              <Link 
-                href={`https://github.com/tresillo2017/safecircle/tree/${gitInfo.branch}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
-              >
-                <GitBranch className="h-4 w-4" />
-                <span>v{process.env.NEXT_PUBLIC_VERSION}</span>
-                <span className="text-slate-500">•</span>
-                <span>{gitInfo.branch}</span>
-                <span className="text-slate-500">@</span>
-                <span>{gitInfo.commit}</span>
-              </Link>
+              {!isLoading && versionInfo && (
+                <Link 
+                  href={`https://github.com/tresillo2017/safecircle/tree/${versionInfo.branch}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
+                >
+                  <GitBranch className="h-4 w-4" />
+                  <span>v{versionInfo.version}</span>
+                  <span className="text-slate-500">•</span>
+                  <span>{versionInfo.branch}</span>
+                  <span className="text-slate-500">@</span>
+                  <span>{versionInfo.commit}</span>
+                </Link>
+              )}
 
               {/* Social Links */}
               <div className="flex items-center gap-4">
