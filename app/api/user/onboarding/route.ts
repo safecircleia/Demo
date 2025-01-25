@@ -13,9 +13,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const { accountType, familyCode } = await req.json();
-
-    // Find user by email first
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -27,55 +24,63 @@ export async function POST(req: Request) {
       );
     }
 
-    // For child accounts, verify family code
-    if (accountType === "child" && familyCode) {
-      const parentUser = await prisma.user.findFirst({
-        where: {
-          familyCode,
-          accountType: "parent"
-        }
-      });
-
-      if (!parentUser) {
-        return NextResponse.json(
-          { error: "Invalid family code" },
-          { status: 400 }
-        );
-      }
+    // Prevent repeated onboarding
+    if (user.onboardingComplete) {
+      return NextResponse.json(
+        { error: "Onboarding already completed" },
+        { status: 400 }
+      );
     }
 
-    // Generate unique family code for parents
-    const newFamilyCode = accountType === "parent" 
-      ? Math.random().toString(36).substring(2, 8).toUpperCase()
-      : familyCode;
+    const { accountType, familyCode, familyOption, familyName, familySettings } = await req.json();
 
     const updatedUser = await prisma.$transaction(async (tx) => {
-      // Update or create onboarding status
-      await tx.onboardingStatus.upsert({
-        where: { userId: user.id },
-        create: {
-          userId: user.id,
-          completed: true,
-          step: 2
-        },
-        update: {
-          completed: true,
-          step: 2
-        }
-      });
+      // Create family if parent is creating one
+      if (accountType === "parent" && familyOption === "create") {
+        const family = await tx.family.create({
+          data: {
+            name: familyName,
+            code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+            settings: familySettings || {},
+            members: {
+              connect: { id: user.id }
+            }
+          }
+        });
 
-      // Update user
-      return tx.user.update({
-        where: { id: user.id },
-        data: {
-          accountType,
-          familyCode: newFamilyCode,
-          familyId: accountType === "child" ? 
-            (await tx.user.findFirst({ 
-              where: { familyCode } 
-            }))?.id : null
+        return tx.user.update({
+          where: { id: user.id },
+          data: {
+            accountType,
+            familyRole: "ADMIN",
+            familyId: family.id,
+            onboardingComplete: true
+          }
+        });
+      }
+
+      // Join existing family for children or parents joining
+      if (familyCode) {
+        const existingFamily = await tx.user.findFirst({
+          where: { familyCode },
+          select: { family: true }
+        });
+
+        if (!existingFamily?.family) {
+          throw new Error("Invalid family code");
         }
-      });
+
+        return tx.user.update({
+          where: { id: user.id },
+          data: {
+            accountType,
+            familyId: existingFamily.family.id,
+            onboardingComplete: true
+          }
+        });
+      }
+
+      throw new Error("Invalid onboarding configuration");
     });
 
     return NextResponse.json({
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Onboarding error:", error);
     return NextResponse.json(
-      { error: "Failed to complete onboarding" },
+      { error: error instanceof Error ? error.message : "Failed to complete onboarding" },
       { status: 500 }
     );
   }

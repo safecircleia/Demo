@@ -3,12 +3,14 @@ import { redirect } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { prisma } from "@/lib/prisma"
 import { AlertTriangle } from "lucide-react"
+import { SettingsPage } from "@/components/dashboard/SettingsPage"
+import { FamilySettings, isFamilySettings } from "@/types/settings"
 
-export default async function DashboardLayout({
-  children
-}: {
+interface DashboardLayoutProps {
   children: React.ReactNode
-}) {
+}
+
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const session = await auth()
   if (!session?.user?.email) {
     redirect("/auth/login")
@@ -30,7 +32,6 @@ export default async function DashboardLayout({
     redirect("/auth/login")
   }
 
-  // Create a safe user object with default values for nullable fields
   const safeUser = {
     name: user.name || 'Anonymous User',
     image: user.image || undefined,
@@ -57,4 +58,29 @@ export default async function DashboardLayout({
       </main>
     </div>
   )
+}
+
+export async function DashboardSettings() {
+  const session = await auth()
+  
+  if (!session?.user?.email) {
+    redirect("/auth/login")
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { family: true }
+  })
+
+  const defaultSettings: FamilySettings = {
+    security: {
+      autoBlock: false,
+      parentApproval: false
+    }
+  }
+
+  const rawSettings = user?.family?.settings
+  const settings = isFamilySettings(rawSettings) ? rawSettings : defaultSettings
+
+  return <SettingsPage initialSettings={settings} />
 }

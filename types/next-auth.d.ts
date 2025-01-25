@@ -1,16 +1,18 @@
-import NextAuth, { DefaultUser } from "next-auth"
+import NextAuth from "next-auth"
+import type { DefaultSession } from 'next-auth'
+
+export type FamilyRole = 'ADMIN' | 'MEMBER'
 
 declare module "next-auth" {
-  interface User extends DefaultUser {
-    id: string
-    accountType: string
-    onboardingComplete: boolean
-    familyCode: string | null
-    familyRole: "ADMIN" | "MEMBER"  // Add this line
+  interface ExtendedUser {
+    familyRole?: FamilyRole
+    onboardingComplete?: boolean
   }
 
+  interface User extends ExtendedUser {}
+
   interface Session {
-    user: User
+    user: ExtendedUser & DefaultSession["user"]
   }
 }
 
@@ -22,3 +24,5 @@ declare module "next-auth/jwt" {
     accessToken?: string
   }
 }
+
+export {}

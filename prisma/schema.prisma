@@ -14,36 +14,35 @@ enum UserRole {
 }
 
 model User {
-  id                 String            @id @default(cuid())
-  name               String?
-  email              String?           @unique
-  emailVerified      DateTime?
-  image              String?
-  password           String?
-  accountType        String            @default("user")
-  familyCode         String?
-  familyId           String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  onboardingComplete Boolean           @default(false)
-  subscriptionPlan   String            @default("free")
-  subscriptionStatus String            @default("active")
-  isBetaUser         Boolean           @default(false)
-  aiSettings         AISettings?
-  apiKeys            ApiKey[]
-  betaFeatures       BetaFeature[]
-  accounts           Account[]
-  authenticators     Authenticator[]
-  onboardingStatus   OnboardingStatus?
-  sessions           Session[]
-  family             User?             @relation("FamilyMembers", fields: [familyId], references: [id])
-  familyMembers      User[]            @relation("FamilyMembers")
-  sentInvitations    FamilyInvitation[] @relation("SentInvitations")
-  familyInvitations  FamilyInvitation[] @relation("FamilyInvitations")
-  role               UserRole          @default(MEMBER)
-  familyRole         UserRole          @default(MEMBER)
-  invitations        FamilyInvitation[] @relation("ReceivedInvitations")
+  id                  String             @id @default(cuid())
+  name                String?
+  email               String?            @unique
+  emailVerified       DateTime?
+  image               String?
+  password            String?
+  accountType         String             @default("user")
+  familyCode          String?
+  familyId            String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  onboardingComplete  Boolean            @default(false)
+  subscriptionPlan    String             @default("free")
+  subscriptionStatus  String             @default("active")
+  isBetaUser          Boolean            @default(false)
+  aiSettings          AISettings?
+  apiKeys             ApiKey[]
+  betaFeatures        BetaFeature[]
+  accounts            Account[]
+  authenticators      Authenticator[]
+  onboardingStatus    OnboardingStatus?
+  sessions            Session[]
+  family              Family?            @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  role                UserRole           @default(MEMBER)
+  familyRole          UserRole           @default(MEMBER)
+  sentInvitations     FamilyInvitation[] @relation("SentInvitations")
+  receivedInvitations FamilyInvitation[] @relation("ReceivedInvitations")
 
+  @@index([familyId])
   @@map("users")
 }
 
@@ -170,12 +169,29 @@ model FamilyInvitation {
   createdAt  DateTime @default(now())
   accepted   Boolean  @default(false)
   status     String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  
-  inviter    User     @relation("SentInvitations", fields: [inviterId], references: [id])
-  family     User     @relation("FamilyInvitations", fields: [familyId], references: [id])
-  invitedId  String?
-  invited    User?    @relation("ReceivedInvitations", fields: [invitedId], references: [id])
+
+  inviter   User    @relation("SentInvitations", fields: [inviterId], references: [id], onDelete: Cascade)
+  family    Family  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  invitedId String?
+  invited   User?   @relation("ReceivedInvitations", fields: [invitedId], references: [id])
 
   @@index([email])
   @@index([familyCode])
+  @@index([inviterId])
+  @@index([familyId])
+  @@index([invitedId])
+}
+
+model Family {
+  id          String             @id @default(cuid())
+  name        String
+  icon        String?
+  code        String             @unique
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  members     User[]
+  settings    Json               @default("{\"notifications\":{\"familyAlerts\":true,\"memberActivity\":true},\"security\":{\"autoBlock\":true,\"parentApproval\":true}}")
+  invitations FamilyInvitation[]
+
+  @@map("families")
 }

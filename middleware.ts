@@ -1,9 +1,42 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { prisma } from '@/lib/prisma' // Adjust the import path as necessary
+import { prisma } from '@/lib/prisma'
+import { getRateLimit } from '@/lib/rate-limit'
 
-export default auth(async (req) => {
-  const { nextUrl } = req
+export const config = {
+  matcher: ['/api/:path*']
+}
+
+// Create rate limiter middleware
+async function rateLimit(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") ?? "127.0.0.1"
+  const { success, remaining } = await getRateLimit(ip, 100, "60")
+
+  if (!success) {
+    return new NextResponse(JSON.stringify({
+      error: "Too Many Requests",
+      message: "Please try again later"
+    }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RateLimit-Limit': '100',
+        'X-RateLimit-Remaining': remaining.toString()
+      }
+    })
+  }
+
+  return NextResponse.next()
+}
+
+// Main middleware
+export default auth(async function middleware(request) {
+  // Apply rate limiting to API routes
+  if (request.url.includes('/api/')) {
+    return rateLimit(request)
+  }
+
+  const { nextUrl } = request
   const session = await auth()
   const isLoggedIn = !!session?.user
   const isAuthPage = nextUrl.pathname.startsWith('/auth')
@@ -38,7 +71,3 @@ export default auth(async (req) => {
 
   return NextResponse.next()
 })
-
-export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
-}

@@ -7,7 +7,7 @@ import { toast } from "sonner"
 
 interface Member {
   id: string
-  name: string | null
+  name: string
   email: string
   image: string | null
   accountType: string
@@ -16,11 +16,17 @@ interface Member {
 }
 
 interface FamilyMembersProps {
-  members: Member[]
-  currentUserRole: 'ADMIN' | 'MEMBER'
+  members: Member[];
+  currentUserRole: "ADMIN" | "MEMBER";
 }
 
-export function FamilyMembers({ members, currentUserRole }: FamilyMembersProps) {
+export const FamilyMembers: React.FC<FamilyMembersProps> = ({ 
+  members, 
+  currentUserRole 
+}): JSX.Element => {
+  // Ensure we have an array of members
+  const membersList = Array.isArray(members) ? members : [];
+
   const removeInvitation = async (invitationId: string) => {
     try {
       const response = await fetch(`/api/family/invitations/${invitationId}`, {
@@ -37,9 +43,17 @@ export function FamilyMembers({ members, currentUserRole }: FamilyMembersProps) 
     }
   }
 
+  if (membersList.length === 0) {
+    return (
+      <div className="text-center p-4 text-muted-foreground">
+        No family members found
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {members.map((member) => (
+      {membersList.map((member) => (
         <div 
           key={member.id} 
           className="flex items-center gap-4 p-3 rounded-lg hover:bg-accent/50 transition-colors"

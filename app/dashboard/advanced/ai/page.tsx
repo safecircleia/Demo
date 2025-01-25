@@ -31,6 +31,19 @@ const defaultSettings = {
   timeout: 30,
 };
 
+const MODEL_OPTIONS = {
+  deepseek: {
+    label: "DeepSeek-r1 1.7B",
+    value: "deepseek",
+    capabilities: ["text", "reasoning"]
+  },
+  llama: {
+    label: "Llama 3.2",
+    value: "llama",
+    capabilities: ["text", "reasoning"]
+  }
+};
+
 export default function AISettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,60 +111,27 @@ export default function AISettingsPage() {
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="deepseek">
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">DeepSeek-r1 7B</span>
-                        <div className="flex gap-2 ml-4">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Chip variant="success" className="flex items-center gap-1">
-                                  <TextIcon className="h-3 w-3" />
-                                  <span>Text</span>
-                                </Chip>
-                              </TooltipTrigger>
-                              <TooltipContent>Text processing capabilities</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Chip variant="purple" className="flex items-center gap-1">
-                                  <BrainIcon className="h-3 w-3" />
-                                  <span>Reasoning</span>
-                                </Chip>
-                              </TooltipTrigger>
-                              <TooltipContent>Advanced reasoning capabilities</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                    {Object.entries(MODEL_OPTIONS).map(([key, model]) => (
+                      <SelectItem key={key} value={model.value}>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-medium">{model.label}</span>
+                          <div className="flex gap-2 ml-4">
+                            {model.capabilities.includes("text") && (
+                              <Chip variant="success" className="flex items-center gap-1">
+                                <TextIcon className="h-3 w-3" />
+                                <span>Text</span>
+                              </Chip>
+                            )}
+                            {model.capabilities.includes("reasoning") && (
+                              <Chip variant="purple" className="flex items-center gap-1">
+                                <BrainIcon className="h-3 w-3" />
+                                <span>Reasoning</span>
+                              </Chip>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="llama">
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">Llama 3.2</span>
-                        <div className="flex gap-2 ml-4">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Chip variant="success" className="flex items-center gap-1">
-                                  <TextIcon className="h-3 w-3" />
-                                  <span>Text</span>
-                                </Chip>
-                              </TooltipTrigger>
-                              <TooltipContent>Text processing capabilities</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Chip variant="info" className="flex items-center gap-1">
-                                  <ImageIcon className="h-3 w-3" />
-                                  <span>Image</span>
-                                </Chip>
-                              </TooltipTrigger>
-                              <TooltipContent>Image analysis capabilities</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    </SelectItem>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
