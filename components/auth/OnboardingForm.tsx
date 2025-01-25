@@ -200,7 +200,7 @@ export function OnboardingForm() {
   const handleOAuthSignIn = async (provider: string) => {
     setIsLoading(true);
     try {
-      await signIn(provider, { callbackUrl: '/onboarding' });
+      await signIn(provider, { callbackUrl: '/auth/onboarding' });
     } catch (error) {
       toast.error("Authentication failed");
     } finally {
