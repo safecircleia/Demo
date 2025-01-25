@@ -18,6 +18,15 @@ export default async function ProfilePage() {
       name: true,
       email: true,
       image: true,
+      createdAt: true,
+      authenticators: {
+        select: {
+          id: true,
+          credentialID: true,
+          credentialDeviceType: true,
+          credentialBackedUp: true,
+        }
+      }
     }
   })
 

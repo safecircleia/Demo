@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,22 +17,53 @@ import {
   CreditCard,
   Bell,
   Star,
-  ChevronDown
+  ChevronDown,
+  Settings2, // Add this import
+  Sparkles // Add this import
 } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation"
 
 interface DashboardSidebarProps {
-  user: any;
+  user: {
+    name: string;
+    image?: string;
+    isBetaUser?: boolean; // Add this field
+  };
   accountType: string;
 }
 
 export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
-  const [openSection, setOpenSection] = useState<string>("family")
+  const [openSection, setOpenSection] = useState<string>("")
   const pathname = usePathname()
   
-  const isActive = (path: string) => pathname === path
+  // Enhanced isActive check for nested routes
+  const isActive = (path: string) => pathname.startsWith(path)
+  
+  // Determine active section on mount and route change
+  useEffect(() => {
+    if (pathname.includes('/dashboard/developer')) setOpenSection('developer')
+    else if (pathname.includes('/dashboard/advanced')) setOpenSection('advanced')
+    else if (pathname.includes('/dashboard/profile')) setOpenSection('profile')
+    else setOpenSection('family')
+  }, [pathname])
+
+  // Updated styles for consistency
+  const activeStyles = "bg-white/5 border-l-2 border-primary/50 text-primary"
+  const buttonStyles = "w-full justify-start gap-2 text-sm hover:bg-white/5"
+  const sectionButtonStyles = "w-full justify-between gap-2 hover:bg-white/5"
+
+  // Add this beta indicator component
+  const BetaIndicator = () => (
+    <div className="flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+      <Sparkles className="h-3 w-3 text-primary" />
+      <span className="text-xs text-primary font-medium">Beta</span>
+    </div>
+  )
+
+  // Only show Advanced section if user is in beta
+  const showAdvancedSection = user.isBetaUser;
 
   return (
     <motion.aside 
@@ -49,9 +80,9 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
               variant="ghost" 
               onClick={() => setOpenSection(openSection === "family" ? "" : "family")}
               className={cn(
-                "w-full justify-between gap-2 hover:bg-white/10",
+                sectionButtonStyles,
                 openSection === "family" && "bg-white/5",
-                isActive("/dashboard") && "bg-primary/20 text-primary border border-primary/20"
+                isActive("/dashboard") && !pathname.includes("/dashboard/") && activeStyles
               )}
             >
               <div className="flex items-center gap-2">
@@ -77,8 +108,8 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
                       <Button 
                         variant="ghost" 
                         className={cn(
-                          "w-full justify-start gap-2 text-sm",
-                          isActive("/dashboard") && "bg-primary/20 text-primary border border-primary/20"
+                          buttonStyles,
+                          isActive("/dashboard") && !pathname.includes("/dashboard/") && activeStyles
                         )}
                       >
                         <Users className="h-4 w-4" />
@@ -90,8 +121,8 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
                         <Button 
                           variant="ghost" 
                           className={cn(
-                            "w-full justify-start gap-2 text-sm",
-                            isActive("/dashboard/settings") && "bg-primary/20 text-primary border border-primary/20"
+                            buttonStyles,
+                            isActive("/dashboard/settings") && activeStyles
                           )}
                         >
                           <Settings className="h-4 w-4" />
@@ -110,7 +141,10 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
             <Button 
               variant="ghost" 
               onClick={() => setOpenSection(openSection === "developer" ? "" : "developer")}
-              className="w-full justify-between gap-2 hover:bg-white/10"
+              className={cn(
+                sectionButtonStyles,
+                openSection === "developer" && "bg-white/5"
+              )}
             >
               <div className="flex items-center gap-2">
                 <Code className="h-5 w-5" />
@@ -132,21 +166,27 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
                 >
                   <div className="pl-4 py-2 space-y-1">
                     <Link href="/dashboard/developer/keys">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
+                      <Button 
+                        variant="ghost" 
+                        className={cn(
+                          buttonStyles,
+                          isActive("/dashboard/developer/keys") && activeStyles
+                        )}
+                      >
                         <Key className="h-4 w-4" />
                         API Keys
                       </Button>
                     </Link>
                     <Link href="/dashboard/developer/usage">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
+                      <Button 
+                        variant="ghost" 
+                        className={cn(
+                          buttonStyles,
+                          isActive("/dashboard/developer/usage") && activeStyles
+                        )}
+                      >
                         <BarChart2 className="h-4 w-4" />
                         Usage Analytics
-                      </Button>
-                    </Link>
-                    <Link href="/dashboard/developer/settings">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
-                        <Bot className="h-4 w-4" />
-                        AI Settings
                       </Button>
                     </Link>
                   </div>
@@ -155,12 +195,69 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
             </AnimatePresence>
           </div>
 
-          {/* Profile Section */}
+          {/* New Advanced Section */}
+          {showAdvancedSection && (
+            <div>
+              <Button 
+                variant="ghost" 
+                onClick={() => setOpenSection(openSection === "advanced" ? "" : "advanced")}
+                className={cn(
+                  sectionButtonStyles,
+                  openSection === "advanced" && "bg-white/5"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-5 w-5" />
+                  <span>Advanced</span>
+                </div>
+                <ChevronDown className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  openSection === "advanced" && "transform rotate-180"
+                )} />
+              </Button>
+              <AnimatePresence>
+                {openSection === "advanced" && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pl-4 py-2 space-y-1">
+                      <Link href="/dashboard/advanced/ai">
+                        <Button 
+                          variant="ghost" 
+                          className={cn(
+                            buttonStyles,
+                            isActive("/dashboard/advanced/ai") && activeStyles
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <Bot className="h-4 w-4" />
+                              AI Settings
+                            </div>
+                            {user.isBetaUser && <BetaIndicator />}
+                          </div>
+                        </Button>
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Profile Section - Fixed double indicator */}
           <div>
             <Button 
               variant="ghost" 
               onClick={() => setOpenSection(openSection === "profile" ? "" : "profile")}
-              className="w-full justify-between gap-2 hover:bg-white/10"
+              className={cn(
+                sectionButtonStyles,
+                openSection === "profile" && "bg-white/5"
+              )}
             >
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -181,30 +278,25 @@ export function DashboardSidebar({ user, accountType }: DashboardSidebarProps) {
                   className="overflow-hidden"
                 >
                   <div className="pl-4 py-2 space-y-1">
-                    <Link href="/dashboard/profile">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
-                        <Settings className="h-4 w-4" />
-                        Account Settings
-                      </Button>
-                    </Link>
-                    <Link href="/dashboard/profile/billing">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
-                        <CreditCard className="h-4 w-4" />
-                        Billing
-                      </Button>
-                    </Link>
-                    <Link href="/dashboard/profile/notifications">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
-                        <Bell className="h-4 w-4" />
-                        Notifications
-                      </Button>
-                    </Link>
-                    <Link href="/dashboard/profile/beta">
-                      <Button variant="ghost" className="w-full justify-start gap-2 text-sm">
-                        <Star className="h-4 w-4" />
-                        Beta Access
-                      </Button>
-                    </Link>
+                    {[
+                      { href: "/dashboard/profile", icon: Settings, label: "Account Settings" },
+                      { href: "/dashboard/profile/subcription", icon: CreditCard, label: "Subscription" },
+                      { href: "/dashboard/profile/notifications", icon: Bell, label: "Notifications" },
+                      { href: "/dashboard/profile/beta", icon: Star, label: "Beta Access" }
+                    ].map((item) => (
+                      <Link href={item.href} key={item.href}>
+                        <Button 
+                          variant="ghost" 
+                          className={cn(
+                            buttonStyles,
+                            pathname === item.href && activeStyles // Changed to exact match for profile items
+                          )}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {item.label}
+                        </Button>
+                      </Link>
+                    ))}
                   </div>
                 </motion.div>
               )}

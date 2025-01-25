@@ -1,3 +1,7 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -18,9 +22,47 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export default async function AiSettingsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/auth/login")
+const defaultSettings = {
+  modelVersion: "deepseek",
+  temperature: 0.7,
+  maxTokens: 2048,
+  safetyLevel: "balanced",
+  streaming: true,
+  timeout: 30,
+};
+
+export default function AISettingsPage() {
+  const [settings, setSettings] = useState(defaultSettings);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const response = await fetch("/api/settings/ai");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/settings/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) throw new Error();
+      toast.success("Settings saved successfully");
+    } catch {
+      toast.error("Failed to save settings");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -51,14 +93,14 @@ export default async function AiSettingsPage() {
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label>Model Version</Label>
-                <Select defaultValue="deepseek">
+                <Select defaultValue={settings.modelVersion} onValueChange={(value) => setSettings({ ...settings, modelVersion: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="deepseek">
                       <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">DeepSeek-R1 1.7B</span>
+                        <span className="font-medium">DeepSeek-r1 7B</span>
                         <div className="flex gap-2 ml-4">
                           <TooltipProvider>
                             <Tooltip>
@@ -117,10 +159,11 @@ export default async function AiSettingsPage() {
               <div className="space-y-2">
                 <Label>Temperature (Creativity)</Label>
                 <Slider
-                  defaultValue={[0.7]}
+                  defaultValue={[settings.temperature]}
                   max={1}
                   step={0.1}
                   className="w-full"
+                  onValueChange={(value) => setSettings({ ...settings, temperature: value[0] })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Higher values make the output more creative but less predictable
@@ -130,10 +173,11 @@ export default async function AiSettingsPage() {
               <div className="space-y-2">
                 <Label>Maximum Response Length</Label>
                 <Slider
-                  defaultValue={[2048]}
+                  defaultValue={[settings.maxTokens]}
                   max={4096}
                   step={256}
                   className="w-full"
+                  onValueChange={(value) => setSettings({ ...settings, maxTokens: value[0] })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Maximum number of tokens in the response
@@ -171,7 +215,7 @@ export default async function AiSettingsPage() {
 
               <div className="space-y-2">
                 <Label>Safety Level</Label>
-                <Select defaultValue="balanced">
+                <Select defaultValue={settings.safetyLevel} onValueChange={(value) => setSettings({ ...settings, safetyLevel: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select safety level" />
                   </SelectTrigger>
@@ -197,16 +241,17 @@ export default async function AiSettingsPage() {
                     Stream responses in real-time
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch defaultChecked={settings.streaming} onCheckedChange={(checked) => setSettings({ ...settings, streaming: checked })} />
               </div>
 
               <div className="space-y-2">
                 <Label>Request Timeout</Label>
                 <Slider
-                  defaultValue={[30]}
+                  defaultValue={[settings.timeout]}
                   max={60}
                   step={5}
                   className="w-full"
+                  onValueChange={(value) => setSettings({ ...settings, timeout: value[0] })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Maximum time in seconds to wait for a response
@@ -234,7 +279,9 @@ export default async function AiSettingsPage() {
 
       <div className="flex justify-end gap-4">
         <Button variant="outline">Reset to Defaults</Button>
-        <Button>Save Changes</Button>
+        <Button onClick={handleSave} disabled={isLoading}>
+          {isLoading ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   )

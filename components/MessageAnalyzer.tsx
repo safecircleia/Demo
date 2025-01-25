@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, AlertTriangle, ShieldCheck, Shield, Smile, Clock, FileJson, Copy } from "lucide-react";
+import { Send, Loader2, AlertTriangle, ShieldCheck, Shield, Smile, Clock, FileJson, Copy, BrainCircuit, Info as InfoIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -27,6 +28,11 @@ interface Message {
     };
     responseTime?: number;
     rawResponse?: string;
+    modelUsed?: string;
+    settings?: {
+      temperature: number;
+      maxTokens: number;
+    };
   };
 }
 
@@ -101,7 +107,7 @@ export default function MessageAnalyzer() {
   };
 
   return (
-    <>
+    <TooltipProvider>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -197,6 +203,29 @@ export default function MessageAnalyzer() {
                           </span>
                         )}
                         
+                        {/* Model Info */}
+                        {message.prediction?.modelUsed && (
+                          <span className="flex items-center gap-1 text-sm text-gray-400">
+                            <BrainCircuit className="h-4 w-4" />
+                            {message.prediction.modelUsed}
+                            {message.prediction.settings && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="p-0">
+                                    <InfoIcon className="h-4 w-4 ml-1" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="space-y-1">
+                                    <p>Temperature: {message.prediction.settings.temperature}</p>
+                                    <p>Max Tokens: {message.prediction.settings.maxTokens}</p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </span>
+                        )}
+                        
                         {/* Raw Response Button */}
                         {message.prediction?.rawResponse && (
                           <Button
@@ -257,6 +286,6 @@ export default function MessageAnalyzer() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </TooltipProvider>
   );
 }

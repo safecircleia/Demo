@@ -3,8 +3,9 @@ import { redirect } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Shield, Users, Star, Building2 } from "lucide-react"
+import { Check, Zap, Shield, Users, Star, Building2, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { prisma } from "@/lib/prisma"
 
 const plans = [
   {
@@ -56,25 +57,61 @@ const plans = [
 export default async function BillingPage() {
   const session = await auth()
   if (!session?.user) redirect("/auth/login")
+  
+  const email = session.user.email
+  if (!email) redirect("/auth/login")
+
+  // Fetch user's subscription status
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { 
+      subscriptionPlan: true,
+      subscriptionStatus: true 
+    }
+  })
+
+  const currentPlan = user?.subscriptionPlan || 'free'
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Billing"
+        title="Subscription"
         description="Manage your subscription and billing settings."
       />
 
+      <Card className="p-6 border-primary/20 bg-gradient-to-r from-primary/10 via-transparent to-transparent animate-gradient">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-full bg-primary/20 animate-pulse">
+            <Sparkles className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Current Plan: {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</h3>
+            <p className="text-sm text-muted-foreground">
+              {currentPlan === 'free' 
+                ? "Upgrade now to protect more family members" 
+                : "Thank you for being a valued subscriber"}
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => (
-          <Card key={plan.name} className={cn(
-            "relative p-6 flex flex-col min-h-[400px] transition-all duration-200 hover:scale-[1.02]",
-            plan.popular && "border-primary shadow-lg shadow-primary/20"
-          )}>
+          <Card 
+            key={plan.name} 
+            className={cn(
+              "relative p-6 flex flex-col min-h-[400px] transition-all duration-300",
+              "hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/10",
+              "data-[active=true]:border-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/20",
+              "animate-fade-in motion-safe:animate-fadeIn"
+            )}
+            data-active={plan.name.toLowerCase() === currentPlan}
+          >
             {plan.popular && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <div className="relative">
                   <span className="absolute inset-0 animate-ping bg-primary/75 rounded-full" />
-                  <span className="bg-primary px-4 py-1 text-xs font-medium rounded-full text-black backdrop-blur-sm border border-primary/50">
+                  <span className="bg-primary px-4 py-1 text-xs font-medium rounded-full text-black backdrop-blur-sm border border-primary/50 animate-pulse">
                     Most Popular
                   </span>
                 </div>
@@ -107,17 +144,34 @@ export default async function BillingPage() {
               </ul>
             </div>
 
-            <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
-              {plan.name === "Free" ? "Current Plan" : `Upgrade to ${plan.name}`}
+            <Button 
+              className={cn(
+                "w-full transition-all duration-300",
+                plan.name.toLowerCase() === currentPlan && "bg-primary/50 cursor-default",
+                "group hover:shadow-lg hover:shadow-primary/20"
+              )}
+              variant={plan.popular ? "default" : "outline"}
+              disabled={plan.name.toLowerCase() === currentPlan}
+            >
+              {plan.name.toLowerCase() === currentPlan ? (
+                <span className="flex items-center gap-2">
+                  Current Plan
+                  <Check className="h-4 w-4 animate-bounce" />
+                </span>
+              ) : (
+                <span className="group-hover:scale-105 transition-transform duration-200">
+                  Upgrade to {plan.name}
+                </span>
+              )}
             </Button>
           </Card>
         ))}
       </div>
 
       <div className="mt-6">
-        <Card className="p-6">
+        <Card className="p-6 hover:shadow-lg transition-all duration-300 group">
           <div className="flex items-center gap-4">
-            <div className="p-2 rounded-lg bg-white/5">
+            <div className="p-2 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors duration-300">
               <Building2 className="h-5 w-5" />
             </div>
             <div>
@@ -131,7 +185,7 @@ export default async function BillingPage() {
             Need a custom solution? Contact us for enterprise pricing and features.
           </p>
           <Button 
-            className="mt-6" 
+            className="mt-6 group-hover:scale-105 transition-transform duration-200" 
             variant="outline"
             size="lg"
           >

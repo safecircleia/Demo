@@ -21,6 +21,9 @@ model User {
   familyId      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  subscriptionPlan String @default("free")
+  subscriptionStatus String @default("active")
+  isBetaUser       Boolean @default(false)
   
   // Auth.js relations
   accounts      Account[]
@@ -32,6 +35,8 @@ model User {
   familyMembers User[]    @relation("FamilyMembers")
   family        User?     @relation("FamilyMembers", fields: [familyId], references: [id])
   onboardingStatus OnboardingStatus?
+  betaFeatures     BetaFeature[]
+  aiSettings     AISettings?
 
   @@map("users")
 }
@@ -99,17 +104,20 @@ model Authenticator {
 }
 
 model ApiKey {
-  id         String    @id @default(cuid())
-  name       String
-  key        String    @unique
-  createdAt  DateTime  @default(now())
-  lastUsed   DateTime?
-  usageLimit Int       @default(1000)
-  usageCount Int       @default(0)
-  user       User      @relation(fields: [userId], references: [id])
-  userId     String
+  id          String    @id @default(cuid())
+  name        String
+  key         String    @unique // This will store the hashed key
+  keyPrefix   String    // Add this field
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  lastUsed    DateTime?
+  usageLimit  Int       @default(1000)
+  usageCount  Int       @default(0)
+  enabled     Boolean   @default(true)
 
-  @@map("api_keys")
+  @@index([userId])
+  @@index([key])
 }
 
 model OnboardingStatus {
@@ -120,4 +128,32 @@ model OnboardingStatus {
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("onboarding_status")
+}
+
+model BetaFeature {
+  id          String   @id @default(cuid())
+  featureId   String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, featureId])
+  @@index([userId])
+}
+
+model AISettings {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  modelVersion    String    @default("deepseek")
+  temperature     Float     @default(0.7)
+  maxTokens       Int       @default(2048)
+  safetyLevel     String    @default("balanced")
+  streaming       Boolean   @default(true)
+  timeout         Int       @default(30)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
 }

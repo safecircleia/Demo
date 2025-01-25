@@ -2,16 +2,19 @@
 
 import { Suspense } from "react";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signIn } from "next-auth/webauthn";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, KeyRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,6 +26,19 @@ function LoginContent() {
       });
     } catch (error) {
       setError("Authentication failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    try {
+      setIsLoading(true);
+      await signIn("passkey", {
+        callbackUrl: searchParams.get("callbackUrl") || "/dashboard",
+      });
+    } catch (error) {
+      setError("Passkey authentication failed");
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +71,7 @@ function LoginContent() {
                   Welcome back
                 </h1>
                 <p className="text-muted-foreground">
-                  Sign in to continue to your account
+                  Choose your preferred sign in method
                 </p>
               </motion.div>
 
@@ -75,7 +91,33 @@ function LoginContent() {
                   hidden: { opacity: 0, y: 20 },
                   show: { opacity: 1, y: 0 }
                 }}
+                className="space-y-4"
               >
+                <Button
+                  variant="default"
+                  className="w-full flex items-center gap-3 justify-center h-12 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={handlePasskeySignIn}
+                  disabled={isLoading}
+                >
+                  <KeyRound className="h-5 w-5" />
+                  <span className="font-medium">
+                    {status === "authenticated" 
+                      ? "Register new Passkey" 
+                      : "Sign in with Passkey"}
+                  </span>
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
                 <Button
                   variant="outline"
                   className="w-full flex items-center gap-3 justify-center h-12 transition-all hover:scale-[1.02] active:scale-[0.98]"

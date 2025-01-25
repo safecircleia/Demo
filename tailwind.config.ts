@@ -87,7 +87,7 @@ module.exports = {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
   		},
   		animation: {
   			gradient: 'gradient 15s ease infinite',
