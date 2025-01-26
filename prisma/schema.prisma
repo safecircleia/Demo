@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -41,7 +40,6 @@ model User {
   familyRole          UserRole           @default(MEMBER)
   sentInvitations     FamilyInvitation[] @relation("SentInvitations")
   receivedInvitations FamilyInvitation[] @relation("ReceivedInvitations")
-  apiStats            UserApiStats[]
 
   @@index([familyId])
   @@map("users")
@@ -218,16 +216,4 @@ model RateLimit {
 
   @@index([key, type])
   @@index([expiresAt])
-}
-
-model UserApiStats {
-  id        String   @id @default(cuid())
-  userId    String
-  month     DateTime
-  count     Int      @default(0)
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-
-  @@unique([userId, month])
-  @@index([month])
 }
