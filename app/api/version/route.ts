@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   // Use Vercel's environment variables
-  const version = '0.6.3'
+  const version = '0.6.4'
   const commit = process.env.VERCEL_GIT_COMMIT_SHA || 'unknown'
   const branch = process.env.VERCEL_GIT_COMMIT_REF || 'unknown'
   

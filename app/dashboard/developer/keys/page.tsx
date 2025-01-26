@@ -20,7 +20,19 @@ export default async function ApiKeysPage() {
           name: true,
           keyPrefix: true,
           createdAt: true,
-          lastUsed: true
+          lastUsed: true,
+          usageCount: true,
+          usage: {
+            where: {
+              month: {
+                gte: new Date(new Date().setDate(1)) // First day of current month
+              }
+            },
+            select: {
+              count: true,
+              month: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       }
@@ -41,7 +53,8 @@ export default async function ApiKeysPage() {
       <Card className="p-6">
         <ApiKeyManager 
           apiKeys={user.apiKeys} 
-          isFreeTier={isFreeTier} 
+          isFreeTier={isFreeTier}
+          subscriptionPlan={user.subscriptionPlan.toLowerCase() as 'free' | 'pro' | 'premium'}
         />
       </Card>
     </div>

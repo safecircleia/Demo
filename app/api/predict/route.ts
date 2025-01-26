@@ -170,6 +170,8 @@ function isOllamaError(error: unknown): error is OllamaError {
 }
 
 export async function POST(req: Request) {
+  const apiKey = req.headers.get('x-api-key');
+  
   try {
     const session = await auth();
     const { message } = await req.json();
@@ -257,6 +259,7 @@ export async function POST(req: Request) {
     };
 
     console.log("Sending response:", response);
+
 
     return NextResponse.json(response, {
       headers: {

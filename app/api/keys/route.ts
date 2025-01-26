@@ -3,14 +3,18 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { generateApiKey } from '@/lib/api-keys'
 
+type CreateApiKeyRequest = {
+  name: string
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth()
+    
     if (!session?.user?.email) {
-      return new NextResponse('Unauthorized', { status: 401 })
+      return new NextResponse('Unauthorized: Email required', { status: 401 })
     }
 
-    // First get the user from the database
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true }
@@ -21,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     const { name } = await request.json()
-    const { key, hashedKey, prefix } = generateApiKey()
+    const { key, hashedKey, prefix } = await generateApiKey()
 
     const apiKey = await prisma.apiKey.create({
       data: {
@@ -38,24 +42,23 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       ...apiKey,
-      key: key // Return the unhashed key
+      key
     })
-  } catch (error: unknown) {
-    console.error('API Key creation error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    return new NextResponse(`Internal Server Error: ${errorMessage}`, { status: 500 })
+  } catch (error) {
+    return new NextResponse('Internal Server Error', { status: 500 })
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     const session = await auth()
-    if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 })
+    
+    if (!session?.user?.id) {
+      return new NextResponse('Unauthorized: User ID required', { status: 401 })
     }
 
     const { id } = await request.json()
-    await prisma.apiKey.delete({
+    await prisma.apiKey.deleteMany({
       where: {
         id,
         userId: session.user.id

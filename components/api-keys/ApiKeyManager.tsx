@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +29,27 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { format } from "date-fns"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Card } from "@/components/ui/card"
+
+const SUBSCRIPTION_LIMITS = {
+  free: {
+    apiKeys: 1,
+    rateLimit: 100,
+    monthlyQuota: 1000
+  },
+  pro: {
+    apiKeys: 5,
+    rateLimit: 500,
+    monthlyQuota: 50000
+  },
+  premium: {
+    apiKeys: 10,
+    rateLimit: 2000,
+    monthlyQuota: 200000
+  }
+} as const
 
 interface ApiKey {
   id: string
@@ -36,18 +57,39 @@ interface ApiKey {
   keyPrefix: string
   createdAt: Date
   lastUsed?: Date | null
+  usageCount: number
+  usage?: {
+    count: number
+    month: Date
+  }[]
 }
 
 interface ApiKeyManagerProps {
   apiKeys: ApiKey[]
   isFreeTier: boolean
+  subscriptionPlan: keyof typeof SUBSCRIPTION_LIMITS
 }
 
-export function ApiKeyManager({ apiKeys, isFreeTier }: ApiKeyManagerProps) {
+export function ApiKeyManager({ apiKeys, isFreeTier, subscriptionPlan = 'free' }: ApiKeyManagerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
+
+  const limits = SUBSCRIPTION_LIMITS[subscriptionPlan]
+
+  // Calculate total usage for current month
+  const totalUsage = useMemo(() => {
+    const currentMonth = new Date().getMonth()
+    return apiKeys.reduce((total, key) => {
+      const monthlyUsage = key.usage?.find(u => 
+        new Date(u.month).getMonth() === currentMonth
+      )?.count || 0
+      return total + monthlyUsage
+    }, 0)
+  }, [apiKeys])
+
+  const usagePercentage = (totalUsage / limits.monthlyQuota) * 100
 
   const handleCreate = async () => {
     try {
@@ -98,12 +140,17 @@ export function ApiKeyManager({ apiKeys, isFreeTier }: ApiKeyManagerProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Your API Keys</h3>
+        <div className="space-y-1">
+          <h3 className="text-lg font-semibold">Your API Keys</h3>
+          <p className="text-sm text-muted-foreground">
+            {apiKeys.length} of {limits.apiKeys} keys used
+          </p>
+        </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button 
               className="space-x-2"
-              disabled={isFreeTier && apiKeys.length >= 1}
+              disabled={apiKeys.length >= limits.apiKeys}
             >
               <Plus className="h-4 w-4" />
               <span>Create New Key</span>
@@ -167,12 +214,44 @@ export function ApiKeyManager({ apiKeys, isFreeTier }: ApiKeyManagerProps) {
         </Dialog>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="p-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Rate Limit</p>
+              <Badge variant="outline">
+                {limits.rateLimit}/min
+              </Badge>
+            </div>
+            <Progress 
+              value={0}
+              className="h-2"
+            />
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Monthly Usage</p>
+              <Badge variant="outline">
+                {totalUsage.toLocaleString()} / {limits.monthlyQuota.toLocaleString()}
+              </Badge>
+            </div>
+            <Progress 
+              value={usagePercentage}
+              className="h-2"
+            />
+          </div>
+        </Card>
+      </div>
+
       {isFreeTier && apiKeys.length >= 1 && (
         <Alert>
           <Key className="h-4 w-4" />
           <AlertTitle>Free Tier Limit Reached</AlertTitle>
           <AlertDescription>
-            You've reached the limit of 1 API key. Upgrade to create more keys.
+            You've reached the limit of 1 API key. Upgrade to create more keys and increase your rate limits.
           </AlertDescription>
         </Alert>
       )}
@@ -186,37 +265,29 @@ export function ApiKeyManager({ apiKeys, isFreeTier }: ApiKeyManagerProps) {
                 <TableHead>Key Prefix</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Last Used</TableHead>
-                <TableHead className="w-[100px]"></TableHead>
+                <TableHead>Usage</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {apiKeys.map((key) => (
                 <TableRow key={key.id}>
-                  <TableCell className="font-medium">{key.name}</TableCell>
-                  <TableCell className="font-mono">
-                    {key.keyPrefix}...
-                  </TableCell>
-                  <TableCell>{format(new Date(key.createdAt), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>{key.name}</TableCell>
+                  <TableCell>{key.keyPrefix}...</TableCell>
+                  <TableCell>{format(key.createdAt, 'MMM d, yyyy')}</TableCell>
                   <TableCell>
-                    {key.lastUsed 
-                      ? format(new Date(key.lastUsed), 'MMM d, yyyy')
-                      : 'Never'
-                    }
+                    {key.lastUsed ? format(key.lastUsed, 'MMM d, yyyy') : 'Never'}
                   </TableCell>
                   <TableCell>
+                    {key.usageCount.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => handleDelete(key.id)}
-                      disabled={isLoading}
-                      className="hover:text-destructive"
                     >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                      <span className="sr-only">Delete key</span>
+                      Delete
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -229,9 +300,9 @@ export function ApiKeyManager({ apiKeys, isFreeTier }: ApiKeyManagerProps) {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
             <Key className="h-6 w-6 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold">No API keys</h3>
+          <h3 className="mt-4 text-sm font-semibold">No API keys</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            You haven't created any API keys yet.
+            Create an API key to get started
           </p>
         </div>
       )}
