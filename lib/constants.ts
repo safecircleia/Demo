@@ -1,20 +1,19 @@
 export const SUBSCRIPTION_LIMITS = {
   free: {
-    apiKeys: 2,
-    usagePerKey: 1000,
-    totalUsage: 2000,
-    rateLimit: 100
+    totalUsage: 1000,
+    apiKeys: 3,
+    rateLimit: 10
   },
   pro: {
-    apiKeys: 5,
-    usagePerKey: 10000,
-    totalUsage: 50000,
-    rateLimit: 500
-  },
-  premium: {
+    totalUsage: 10000,
     apiKeys: 10,
-    usagePerKey: 100000,
-    totalUsage: 200000,
-    rateLimit: 2000
+    rateLimit: 100
+  },
+  enterprise: {
+    totalUsage: 100000,
+    apiKeys: 50,
+    rateLimit: 1000
   }
 } as const
+
+export type PlanName = keyof typeof SUBSCRIPTION_LIMITS

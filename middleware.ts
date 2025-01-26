@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import { auth } from "@/auth"
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
 import { hashApiKey } from '@/lib/api-keys'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // Rate limits per minute
 const RATE_LIMITS = {
@@ -51,164 +56,107 @@ const isApiKeyRoute = (pathname: string) =>
   API_KEY_ROUTES.some(route => pathname.startsWith(route))
 
 async function checkRateLimit(key: string, plan: 'free' | 'pro' | 'premium') {
+  const hashedKey = hashApiKey(key)
+  const rateLimit = RATE_LIMITS[plan]
+  
   const now = new Date()
-  const minute = now.getMinutes()
-  const rateLimitKey = `${key}-${minute}`
+  const windowStart = new Date(now.getTime() - 60000) // 1 minute ago
 
-  const rateLimit = await prisma.rateLimit.upsert({
-    where: { id: rateLimitKey },
-    create: {
-      id: rateLimitKey,
-      key,
-      count: 1,
-      type: 'api',
-      expiresAt: new Date(now.getTime() + 60 * 1000)
-    },
-    update: {
-      count: {
-        increment: 1
+  // Update rate limit counters using Supabase
+  const { data, error } = await supabase
+    .from('api_usage')
+    .upsert([
+      {
+        api_key_id: hashedKey,
+        rate_limit_count: 1,
+        rate_limit_window: now.toISOString(),
+        last_used: now.toISOString()
       }
-    }
-  })
+    ], {
+      onConflict: 'api_key_id',
+      count: 'rate_limit_count + 1'
+    })
+    .select('rate_limit_count')
+    .single()
 
-  const limit = RATE_LIMITS[plan]
-  return {
-    success: rateLimit.count <= limit,
-    remaining: Math.max(0, limit - rateLimit.count),
-    limit
+  if (error) {
+    console.error('Rate limit error:', error)
+    return false
   }
+
+  return data.rate_limit_count <= rateLimit
+}
+
+async function updateUsage(key: string) {
+  const hashedKey = hashApiKey(key)
+
+  // Increment usage count in Supabase
+  const { error } = await supabase
+    .from('api_usage')
+    .upsert([
+      {
+        api_key_id: hashedKey,
+        count: 1,
+        last_used: new Date().toISOString()
+      }
+    ], {
+      onConflict: 'api_key_id',
+      count: 'count + 1'
+    })
+
+  if (error) {
+    console.error('Usage update error:', error)
+  }
+}
+
+export async function middleware(req: Request) {
+  const { pathname } = new URL(req.url)
+
+  // Public routes bypass checks
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next()
+  }
+
+  // API key routes
+  if (isApiKeyRoute(pathname)) {
+    const apiKey = req.headers.get('x-api-key')
+    if (!apiKey) {
+      return new NextResponse('API key required', { status: 401 })
+    }
+
+    // Verify API key and get plan using Supabase
+    const { data: keyData } = await supabase
+      .from('api_keys')
+      .select('plan')
+      .eq('key', hashApiKey(apiKey))
+      .single()
+
+    if (!keyData) {
+      return new NextResponse('Invalid API key', { status: 401 })
+    }
+
+    // Check rate limit
+    const withinLimit = await checkRateLimit(apiKey, keyData.plan)
+    if (!withinLimit) {
+      return new NextResponse('Rate limit exceeded', { status: 429 })
+    }
+
+    // Update usage
+    await updateUsage(apiKey)
+    return NextResponse.next()
+  }
+
+  // Protected routes use session auth
+  if (isProtectedRoute(pathname)) {
+    const session = await auth()
+    if (!session) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/api/:path*']
-}
-
-export async function middleware(request: Request) {
-  const { pathname } = new URL(request.url)
-  
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next()
-  }
-
-  const apiKey = request.headers.get('authorization')?.replace('Bearer ', '')
-  
-  if (apiKey && API_KEY_ROUTES.some(route => pathname.startsWith(route))) {
-    try {
-      const hashedKey = hashApiKey(apiKey)
-      
-      const result = await prisma.$transaction(async (tx) => {
-        // First find the key
-        const existingKey = await tx.apiKey.findFirst({
-          where: { 
-            key: hashedKey,
-            enabled: true 
-          },
-          include: {
-            user: {
-              select: { 
-                subscriptionPlan: true 
-              }
-            }
-          }
-        })
-
-        if (!existingKey) {
-          throw new Error('Invalid API key')
-        }
-
-        // Update usage statistics
-        const currentMonth = new Date()
-        currentMonth.setDate(1)
-        currentMonth.setHours(0, 0, 0, 0)
-
-        await tx.apiKey.update({
-          where: { id: existingKey.id },
-          data: {
-            lastUsed: new Date(),
-            usageCount: { increment: 1 },
-            usage: {
-              upsert: {
-                where: {
-                  apiKeyId_month: {
-                    apiKeyId: existingKey.id,
-                    month: currentMonth
-                  }
-                },
-                create: {
-                  month: currentMonth,
-                  count: 1
-                },
-                update: {
-                  count: { increment: 1 }
-                }
-              }
-            }
-          }
-        })
-
-        return existingKey
-      })
-
-      // Check rate limits
-      const rateLimit = await checkRateLimit(result.key, result.user.subscriptionPlan as 'free' | 'pro' | 'premium')
-      if (!rateLimit.success) {
-        return NextResponse.json({ 
-          error: 'Rate limit exceeded',
-          limit: rateLimit.limit,
-          remaining: rateLimit.remaining
-        }, { status: 429 })
-      }
-
-      return NextResponse.next()
-
-    } catch (error) {
-      console.error('API key validation error:', error)
-      return NextResponse.json({ 
-        error: error instanceof Error ? error.message : 'Authentication failed' 
-      }, { status: 401 })
-    }
-  }
-
-  const session = await auth()
-  const isLoggedIn = !!session?.user
-
-  // Handle API key routes
-  if (API_KEY_ROUTES.some(route => pathname.startsWith(route))) {
-    const apiKey = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (apiKey) {
-      // API key validation logic
-      try {
-        const hashedApiKey = hashApiKey(apiKey)
-        const keyData = await prisma.apiKey.findUnique({
-          where: { key: hashedApiKey },
-          include: {
-            user: { select: { subscriptionPlan: true } }
-          }
-        })
-
-        if (!keyData || !keyData.enabled) {
-          return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
-        }
-
-        // Rate limit check for API keys
-        const rateLimit = await checkRateLimit(keyData.key, keyData.user.subscriptionPlan as 'free' | 'pro' | 'premium')
-        if (!rateLimit.success) {
-          return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
-        }
-
-        return NextResponse.next()
-      } catch (error) {
-        console.error('API key validation error:', error)
-        return NextResponse.json({ error: 'Authentication failed, API key required for this endpoint' }, { status: 500 })
-      }
-    }
-  }
-
-  // Allow access if user is logged in
-  if (isLoggedIn) {
-    return NextResponse.next()
-  }
-
-  // Reject if no valid auth
-  return NextResponse.json({ error: 'Web Authentication required, or no api key provided' }, { status: 401 })
+  matcher: '/api/:path*'
 }

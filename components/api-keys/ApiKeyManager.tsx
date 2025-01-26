@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -65,18 +65,73 @@ interface ApiKey {
 }
 
 interface ApiKeyManagerProps {
-  apiKeys: ApiKey[]
   isFreeTier: boolean
   subscriptionPlan: keyof typeof SUBSCRIPTION_LIMITS
 }
 
-export function ApiKeyManager({ apiKeys, isFreeTier, subscriptionPlan = 'free' }: ApiKeyManagerProps) {
+export function ApiKeyManager({ isFreeTier, subscriptionPlan = 'free' }: ApiKeyManagerProps) {
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
 
   const limits = SUBSCRIPTION_LIMITS[subscriptionPlan]
+
+  const loadApiKeys = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/keys')
+      const data = await response.json()
+      setApiKeys(data)
+    } catch (error) {
+      toast.error('Failed to load API keys')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const createApiKey = async (name: string) => {
+    try {
+      const response = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      })
+      
+      if (!response.ok) throw new Error()
+      
+      const data = await response.json()
+      setNewKey(data.key) // Store the new API key
+      await loadApiKeys()
+      toast.success('API key created successfully')
+    } catch (error) {
+      toast.error('Failed to create API key')
+    }
+  }
+
+  const deleteApiKey = async (id: string) => {
+    try {
+      setIsDeletingId(id)
+      const response = await fetch(`/api/keys?id=${id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) throw new Error()
+      
+      await loadApiKeys() // Reload after deletion
+      toast.success('API key deleted successfully')
+    } catch (error) {
+      toast.error('Failed to delete API key')
+    } finally {
+      setIsDeletingId(null)
+    }
+  }
+
+  useEffect(() => {
+    loadApiKeys()
+  }, [loadApiKeys])
 
   // Calculate total usage for current month
   const totalUsage = useMemo(() => {
@@ -91,50 +146,9 @@ export function ApiKeyManager({ apiKeys, isFreeTier, subscriptionPlan = 'free' }
 
   const usagePercentage = (totalUsage / limits.monthlyQuota) * 100
 
-  const handleCreate = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch("/api/keys", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
-      })
-
-      if (!response.ok) throw new Error("Failed to create API key")
-
-      const data = await response.json()
-      setNewKey(data.key)
-      toast.success("API key created successfully")
-    } catch (error) {
-      toast.error("Failed to create API key")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)
     toast.success("Copied to clipboard")
-  }
-
-  const handleDelete = async (id: string) => {
-    try {
-      setIsLoading(true)
-      const response = await fetch("/api/keys", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id })
-      })
-
-      if (!response.ok) throw new Error("Failed to delete API key")
-
-      window.location.reload()
-      toast.success("API key deleted successfully")
-    } catch (error) {
-      toast.error("Failed to delete API key")
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   return (
@@ -158,57 +172,45 @@ export function ApiKeyManager({ apiKeys, isFreeTier, subscriptionPlan = 'free' }
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create API Key</DialogTitle>
-              <DialogDescription>
-                Give your API key a name to help you identify its use.
-              </DialogDescription>
+              <DialogTitle>
+                {newKey ? 'Your New API Key' : 'Create API Key'}
+              </DialogTitle>
             </DialogHeader>
             {newKey ? (
               <div className="space-y-4">
-                <Alert className="border-yellow-500/50 bg-yellow-500/10">
-                  <AlertCircle className="h-4 w-4 text-yellow-500" />
-                  <AlertTitle>Important</AlertTitle>
-                  <AlertDescription>
-                    This key will only be shown once. Please copy it now and store it securely.
-                  </AlertDescription>
-                </Alert>
-                <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all">
-                  {newKey}
+                <p className="text-sm text-muted-foreground">
+                  Please copy your API key now. You won't be able to see it again!
+                </p>
+                <div className="rounded-md bg-muted p-4">
+                  <code className="text-sm">{newKey}</code>
                 </div>
                 <Button 
-                  className="w-full"
                   onClick={() => handleCopy(newKey)}
+                  className="w-full"
                 >
-                  Copy Key
+                  Copy API Key
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Key Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., Production API Key"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={handleCreate}
-                    disabled={!name || isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Creating...
-                      </>
-                    ) : (
-                      "Create Key"
-                    )}
+              <form onSubmit={(e) => {
+                e.preventDefault()
+                createApiKey(name)
+              }}>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="My API Key"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Create API Key
                   </Button>
-                </DialogFooter>
-              </div>
+                </div>
+              </form>
             )}
           </DialogContent>
         </Dialog>
@@ -283,11 +285,16 @@ export function ApiKeyManager({ apiKeys, isFreeTier, subscriptionPlan = 'free' }
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
-                      variant="ghost"
+                      variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(key.id)}
+                      disabled={isDeletingId === key.id}
+                      onClick={() => deleteApiKey(key.id)}
                     >
-                      Delete
+                      {isDeletingId === key.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        'Delete'
+                      )}
                     </Button>
                   </TableCell>
                 </TableRow>

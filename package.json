@@ -1,6 +1,6 @@
 {
   "name": "safecircle",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "vercel-build": "prisma generate && prisma db push && next build",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "realtime": "ts-node --project tsconfig.server.json server/realtime.ts",
+    "dev:all": "concurrently \"npm run dev\" \"npm run realtime\""
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
@@ -39,8 +41,10 @@
     "@radix-ui/react-toast": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.1.7",
     "@react-email/components": "^0.0.32",
+    "@react-spring/web": "^9.7.4",
     "@simplewebauthn/browser": "9.0.1",
     "@simplewebauthn/server": "9.0.3",
+    "@supabase/supabase-js": "^2.48.1",
     "@tanstack/react-query": "^4.36.1",
     "@trpc/client": "^10.45.2",
     "@trpc/next": "^10.45.2",
@@ -69,6 +73,7 @@
     "react-feather": "^2.0.10",
     "react-hook-form": "^7.54.2",
     "react-markdown": "^9.0.3",
+    "react-native-web": "^0.19.13",
     "react-toastify": "^11.0.3",
     "react-type-animation": "^3.2.0",
     "recharts": "^2.15.0",
@@ -76,6 +81,8 @@
     "sass": "^1.83.4",
     "shadcn": "^1.0.0",
     "shadcn-ui": "^0.9.4",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "sonner": "^1.7.2",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",

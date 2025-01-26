@@ -3,7 +3,6 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { UsageAnalytics } from "@/components/usage/UsageAnalytics"
-import { withAccelerate } from "@prisma/extension-accelerate"
 
 export default async function UsageAnalyticsPage() {
   const session = await auth()
