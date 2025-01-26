@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate --no-engine && prisma migrate deploy && prisma db push"
+    "vercel-build": "prisma generate && prisma migrate deploy && next build",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
