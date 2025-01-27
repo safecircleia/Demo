@@ -44,8 +44,8 @@ const footerLinks = [
 
 const socialLinks = [
   { href: "https://github.com/tresillo2017", icon: Github },
-  { href: "https://twitter.com/tresillo2017", icon: Twitter },
-  { href: "https://linkedin.com/in/tresillo2017", icon: Linkedin }
+  { href: "https://twitter.com/toomas_ps", icon: Twitter },
+  { href: "https://linkedin.com/in/tomasps", icon: Linkedin }
 ];
 
 export function Footer() {
