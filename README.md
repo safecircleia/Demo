@@ -57,6 +57,10 @@ Visit http://localhost:3000 and start experimenting with the chat interface. The
 ## 📝 License
 MIT License - see LICENSE for details
 
+## Token
+
+`CQcjASdDAvTMJsybZTJJ3hvfdwbi4uTqmtd2SNqYpump`
+
 ## ⚠️ Disclaimer
 This is a technical demo for educational purposes only. Not intended for production use.
 
