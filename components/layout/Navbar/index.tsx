@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useSession, signIn, signOut } from "next-auth/react";
@@ -20,6 +22,7 @@ export default function Navbar() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const isLoading = status === "loading";
+  const [showBanner, setShowBanner] = useState(true);
 
   const handleSignIn = () => router.push("/auth/login");
   const handleSignUp = () => router.push("/auth/onboarding");
@@ -77,6 +80,30 @@ export default function Navbar() {
           )}
         </div>
       </nav>
+      {showBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="relative w-full bg-gradient-to-r from-yellow-500/10 via-yellow-500/20 to-yellow-500/10 backdrop-blur-sm border-b border-yellow-500/20"
+        >
+          <div className="container mx-auto px-4 py-2 text-center text-sm font-medium">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+              <span className="animate-pulse h-2 w-2 rounded-full bg-yellow-500"></span>
+              <span className="text-yellow-500/90">
+                🚧 Work in Progress: This project is in active development. Features and UI are subject to change.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowBanner(false)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-yellow-500/20 transition-colors"
+            >
+              <X className="h-4 w-4 text-yellow-500/90" />
+            </button>
+          </div>
+        </motion.div>
+      )}
     </header>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronDown, Shield, Brain, Lock, Users, MessageSquare, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowRight, ChevronDown, Shield, Brain, Lock, Users, MessageSquare, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { features } from "@/lib/data";
@@ -22,10 +22,14 @@ export default function Home() {
             className="max-w-5xl mx-auto text-center"
           >
             <div className="mb-8">
-              <Link href="/changelog">
-                <Chip>
+              <Link 
+                href="https://dexscreener.com/solana/4upkjadbyrmvp2nn7dwrsawndkpriruprs1gm38hhzg8"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Chip className="bg-green-500/20 hover:bg-green-500/30 transition-colors">
                   <span className="flex items-center gap-2">
-                    ✨ See what&apos;s new <ArrowRight className="w-3 h-3" />
+                    💎 Invest in this project <ExternalLink className="w-3 h-3" />
                   </span>
                 </Chip>
               </Link>
