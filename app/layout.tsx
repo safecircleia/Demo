@@ -6,7 +6,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer/index";
 import { AuthProvider } from "@/components/providers/auth-provider";
-import VercelAnalytics from '@/components/VercelAnalytics';
+import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={GeistSans.className}>
       <head>
-        <VercelAnalytics />
+        <Analytics />
         <SpeedInsights />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
