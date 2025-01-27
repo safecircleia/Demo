@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react"
 import { SettingsPage } from "@/components/dashboard/SettingsPage"
 import { FamilySettings, isFamilySettings } from "@/types/settings"
 import VercelAnalytics from '@/components/VercelAnalytics';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -44,6 +45,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     <html lang="en">
       <head>
         <VercelAnalytics />
+        <SpeedInsights />
       </head>
       <body>
         <div className="flex h-screen pt-16">

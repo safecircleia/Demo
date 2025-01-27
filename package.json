@@ -48,6 +48,7 @@
     "@trpc/server": "^10.45.2",
     "@umami/node": "^0.4.0",
     "@vercel/analytics": "^1.4.1",
+    "@vercel/speed-insights": "^1.1.0",
     "auth": "^1.2.3",
     "bcryptjs": "^2.4.3",
     "canvas-confetti": "^1.9.3",

@@ -7,6 +7,8 @@ import Navbar from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer/index";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import VercelAnalytics from '@/components/VercelAnalytics';
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 
 export const metadata: Metadata = {
   title: "SafeCircle",
@@ -32,6 +34,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={GeistSans.className}>
       <head>
         <VercelAnalytics />
+        <SpeedInsights />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider
