@@ -7,12 +7,17 @@ import styles from './styles.module.scss';
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { usePathname } from 'next/navigation';
 
 // Add type for version info
 interface VersionInfo {
   version: string
   branch: string
   commit: string
+}
+
+interface FooterProps {
+  forceMargin?: boolean
 }
 
 const footerLinks = [
@@ -48,12 +53,16 @@ const socialLinks = [
   { href: "https://linkedin.com/in/tomasps", icon: Linkedin }
 ];
 
-export function Footer() {
+export function Footer({ forceMargin = true }: FooterProps) {
   const [gitInfo, setGitInfo] = useState({ branch: '', commit: '', version: '' });
 
   // Add at the start of component
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname();
+  const excludedPaths = ['/', '/dashboard', '/demo']
+  const isExcludedPath = excludedPaths.includes(pathname) || pathname.startsWith('/dashboard/') || pathname.startsWith('/demo/')
+  const shouldAddMargin = forceMargin && !isExcludedPath;
 
   useEffect(() => {
     async function fetchVersionInfo() {
@@ -86,7 +95,7 @@ export function Footer() {
   }, [])
 
   return (
-    <footer className="">
+    <footer className={shouldAddMargin ? 'mt-24' : undefined}>
       <div className="bg-black/50 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-12 space-y-8">
           {/* Main Footer Content */}

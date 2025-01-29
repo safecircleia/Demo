@@ -8,7 +8,7 @@ export default function DemoPage() {
   return (
     <>
       <WarningDialog />
-      <div className="relative pt-32 md:pt-48">
+      <div className="relative pt-10">
         <div className="container px-4 mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

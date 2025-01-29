@@ -41,10 +41,10 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex">
       <DashboardSidebar user={safeUser} accountType={user.accountType} />
       <main className="flex-1">
-        <div className="p-8">
+        <div className="p-5">
           {children}
           <Analytics />
           <SpeedInsights />

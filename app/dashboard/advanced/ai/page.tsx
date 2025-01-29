@@ -26,6 +26,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OpenAI, DeepSeek } from '@lobehub/icons';
+import { Progress } from "@/components/ui/progress"
 
 const defaultSettings = {
   modelVersion: "gpt3",
@@ -114,7 +115,7 @@ const CapabilityTag = ({ type }: { type: CapabilityType }) => (
   </TooltipProvider>
 );
 
-const ModelCard = ({ model, isSelected, onSelect }) => (
+const ModelCard = ({ model, isSelected, onSelect, isUpdating }) => (
   <Card
     className={cn(
       "group relative cursor-pointer transition-all duration-300",
@@ -123,9 +124,10 @@ const ModelCard = ({ model, isSelected, onSelect }) => (
       `bg-gradient-to-br ${model.bgGradient}`,
       "overflow-hidden",
       isSelected && "ring-2 ring-primary ring-opacity-50 shadow-lg",
-      !model.available && "opacity-75"
+      !model.available && "opacity-75",
+      isUpdating && "opacity-50 pointer-events-none"
     )}
-    onClick={() => model.available && onSelect(model.value)}
+    onClick={() => model.available && !isUpdating && onSelect(model.value)}
   >
     <div className="absolute inset-0 bg-gradient-to-br from-transparent to-background/5 pointer-events-none" />
     
@@ -203,11 +205,81 @@ const PrivacyNotice = () => (
 );
 
 const ModelSelector = () => {
-  const [selected, setSelected] = useState<string>("gpt3");
+  const [selected, setSelected] = useState<string>("gpt3")
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [tokenInfo, setTokenInfo] = useState({ 
+    tokensUsed: 0, 
+    tokenLimit: 10, 
+    tokensRemaining: 10,
+    resetAt: null 
+  });
+
+  const handleModelSelect = async (modelValue: string) => {
+    setIsUpdating(true)
+    try {
+      const response = await fetch("/api/settings/ai", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelVersion: modelValue })
+      })
+
+      if (!response.ok) throw new Error()
+      
+      setSelected(modelValue)
+      toast.success("AI model updated successfully")
+    } catch (error) {
+      toast.error("Failed to update AI model")
+      console.error("Error updating model:", error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Load saved model on mount
+  useEffect(() => {
+    const loadSavedModel = async () => {
+      try {
+        const response = await fetch("/api/settings/ai")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.modelVersion) {
+            setSelected(data.modelVersion)
+          }
+        }
+      } catch (error) {
+        console.error("Error loading saved model:", error)
+      }
+    }
+    loadSavedModel()
+  }, [])
+
+  useEffect(() => {
+    const loadTokenInfo = async () => {
+      const response = await fetch("/api/settings/ai");
+      if (response.ok) {
+        const data = await response.json();
+        setTokenInfo({
+          tokensUsed: data.tokensUsed || 0,
+          tokenLimit: data.tokenLimit || 10,
+          tokensRemaining: data.tokensRemaining || 10,
+          resetAt: data.resetAt
+        });
+      }
+    };
+    loadTokenInfo();
+  }, []);
 
   return (
     <div className="space-y-8">
-
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Token Usage</h3>
+        <div className="flex items-center gap-2">
+          <Progress value={(tokenInfo.tokensUsed / tokenInfo.tokenLimit) * 100} className="w-48" />
+          <span className="text-sm text-muted-foreground">
+            {tokenInfo.tokensRemaining.toLocaleString()} tokens remaining
+          </span>
+        </div>
+      </div>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Internal Solutions</h3>
@@ -239,17 +311,17 @@ const ModelSelector = () => {
               key={key}
               model={model}
               isSelected={selected === model.value}
-              onSelect={setSelected}
+              onSelect={handleModelSelect}
+              isUpdating={isUpdating}
             />
           ))}
         </div>
       </div>
 
-
       <PrivacyNotice />
     </div>
-  );
-};
+  )
+}
 
 interface SettingOption {
   label: string;

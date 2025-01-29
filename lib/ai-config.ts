@@ -1,7 +1,8 @@
 import { OpenAI } from 'openai'
-import { AIStream } from 'ai'
+import { deepseek } from '@ai-sdk/deepseek'
+import { AIStream, generateText } from 'ai'
 
-export type ModelProvider = 'openai' | 'anthropic' | 'google'
+export type ModelProvider = 'openai' | 'deepseek'
 export type AnalysisStatus = 'SAFE' | 'SUSPICIOUS' | 'DANGEROUS'
 
 export interface AIModelConfig {
@@ -47,33 +48,74 @@ export async function analyzeMessage(
   config: AIModelConfig = defaultConfig
 ): Promise<AnalysisResult> {
   const startTime = performance.now()
-  const openai = createAIClient()
 
-  const response = await openai.chat.completions.create({
-    model: config.modelName,
-    messages: [
-      {
-        role: 'system',
-        content: 'You are a content safety analyzer. Only respond with valid JSON.'
-      },
-      {
-        role: 'user',
-        content: ANALYSIS_PROMPT + message
+  try {
+    if (config.provider === 'deepseek') {
+      const { text } = await generateText({
+        model: deepseek(config.modelName),
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a content safety analyzer. Only respond with valid JSON.'
+          },
+          {
+            role: 'user',
+            content: ANALYSIS_PROMPT + message
+          }
+        ],
+        temperature: config.temperature,
+        maxTokens: config.maxTokens
+      })
+      
+      const result = JSON.parse(text || '{}')
+      return processResult(result, startTime)
+    } else {
+      const openai = createAIClient()
+      const response = await openai.chat.completions.create({
+        model: config.modelName,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a content safety analyzer. Only respond with valid JSON in the following format: {"status": "SAFE" | "SUSPICIOUS" | "DANGEROUS", "confidence": number, "reason": "string"}'
+          },
+          {
+            role: 'user',
+            content: ANALYSIS_PROMPT + message
+          }
+        ],
+        temperature: config.temperature,
+        max_tokens: config.maxTokens,
+      })
+
+      try {
+        const result = JSON.parse(response.choices[0].message.content || '{}')
+        return processResult(result, startTime)
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError)
+        return {
+          status: 'SUSPICIOUS',
+          confidence: 50,
+          reason: 'Failed to parse AI response',
+          responseTime: performance.now() - startTime
+        }
       }
-    ],
-    temperature: config.temperature,
-    max_tokens: config.maxTokens,
-    response_format: { type: 'json_object' }
-  })
+    }
+  } catch (error) {
+    return {
+      status: 'SUSPICIOUS',
+      confidence: 50,
+      reason: 'Analysis failed: ' + (error as Error).message,
+      responseTime: performance.now() - startTime
+    }
+  }
+}
 
-  const result = JSON.parse(response.choices[0].message.content || '{}')
-  const responseTime = performance.now() - startTime
-
+function processResult(result: any, startTime: number): AnalysisResult {
   return {
     status: result.status || 'SUSPICIOUS',
     confidence: Number(result.confidence) || 50,
     reason: result.reason || 'Analysis failed',
-    responseTime,
+    responseTime: performance.now() - startTime,
     rawResponse: JSON.stringify(result)
   }
 }
