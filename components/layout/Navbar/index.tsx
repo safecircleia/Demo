@@ -28,8 +28,8 @@ export default function Navbar() {
   const handleSignUp = () => router.push("/auth/onboarding");
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl">
-      <nav className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="relative top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl">
+      <nav className="relavitve z-10 container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
