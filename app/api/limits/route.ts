@@ -21,6 +21,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Create AISettings if it doesn't exist
+    const aiSettings = user.aiSettings || await prisma.aISettings.create({
+      data: {
+        userId: user.id,
+      }
+    })
+
     // Get today's message count
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -39,7 +46,7 @@ export async function GET(req: Request) {
     resetTime.setDate(resetTime.getDate() + 1)
 
     // Check if we need to reset tokens (if last reset was before today)
-    const lastReset = user.aiSettings?.tokensResetAt || new Date(0)
+    const lastReset = aiSettings.tokensResetAt || new Date(0)
     if (lastReset < today) {
       await prisma.aISettings.update({
         where: { userId: user.id },
@@ -50,7 +57,7 @@ export async function GET(req: Request) {
       })
     }
 
-    const tokensUsed = user.aiSettings?.tokensUsed || 0
+    const tokensUsed = aiSettings.tokensUsed || 0
 
     return NextResponse.json({
       messages: {

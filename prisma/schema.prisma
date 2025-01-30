@@ -236,5 +236,5 @@ model MessageLog {
 
   @@index([userId])
   @@index([createdAt])
-  @@map("message_logs")
+  @@map("message_log") // Changed from "message_logs" to "message_log"
 }

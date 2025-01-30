@@ -34,6 +34,7 @@ const PROTECTED_ROUTES = [
   '/api/passkeys/',
   '/api/profile',
   '/api/predict',
+  '/demo'  // Add demo route protection
 ]
 
 const API_KEY_ROUTES = [
@@ -80,135 +81,156 @@ async function checkRateLimit(key: string, plan: 'free' | 'pro' | 'premium') {
 }
 
 export const config = {
-  matcher: ['/api/:path*']
+  matcher: [
+    '/api/:path*',
+    '/demo/:path*',
+    '/demo',
+    '/family/:path*',
+    '/settings/:path*'
+  ]
 }
 
 export async function middleware(request: Request) {
   const { pathname } = new URL(request.url)
   
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next()
-  }
+  // Handle API routes first
+  if (pathname.startsWith('/api/')) {
+    if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+      return NextResponse.next()
+    }
 
-  const apiKey = request.headers.get('authorization')?.replace('Bearer ', '')
+    const apiKey = request.headers.get('authorization')?.replace('Bearer ', '')
   
-  if (apiKey && API_KEY_ROUTES.some(route => pathname.startsWith(route))) {
-    try {
-      const hashedKey = hashApiKey(apiKey)
-      
-      const result = await prisma.$transaction(async (tx) => {
-        // First find the key
-        const existingKey = await tx.apiKey.findFirst({
-          where: { 
-            key: hashedKey,
-            enabled: true 
-          },
-          include: {
-            user: {
-              select: { 
-                subscriptionPlan: true 
-              }
-            }
-          }
-        })
-
-        if (!existingKey) {
-          throw new Error('Invalid API key')
-        }
-
-        // Update usage statistics
-        const currentMonth = new Date()
-        currentMonth.setDate(1)
-        currentMonth.setHours(0, 0, 0, 0)
-
-        await tx.apiKey.update({
-          where: { id: existingKey.id },
-          data: {
-            lastUsed: new Date(),
-            usageCount: { increment: 1 },
-            usage: {
-              upsert: {
-                where: {
-                  apiKeyId_month: {
-                    apiKeyId: existingKey.id,
-                    month: currentMonth
-                  }
-                },
-                create: {
-                  month: currentMonth,
-                  count: 1
-                },
-                update: {
-                  count: { increment: 1 }
+    if (apiKey && API_KEY_ROUTES.some(route => pathname.startsWith(route))) {
+      try {
+        const hashedKey = hashApiKey(apiKey)
+        
+        const result = await prisma.$transaction(async (tx) => {
+          // First find the key
+          const existingKey = await tx.apiKey.findFirst({
+            where: { 
+              key: hashedKey,
+              enabled: true 
+            },
+            include: {
+              user: {
+                select: { 
+                  subscriptionPlan: true 
                 }
               }
             }
+          })
+
+          if (!existingKey) {
+            throw new Error('Invalid API key')
           }
+
+          // Update usage statistics
+          const currentMonth = new Date()
+          currentMonth.setDate(1)
+          currentMonth.setHours(0, 0, 0, 0)
+
+          await tx.apiKey.update({
+            where: { id: existingKey.id },
+            data: {
+              lastUsed: new Date(),
+              usageCount: { increment: 1 },
+              usage: {
+                upsert: {
+                  where: {
+                    apiKeyId_month: {
+                      apiKeyId: existingKey.id,
+                      month: currentMonth
+                    }
+                  },
+                  create: {
+                    month: currentMonth,
+                    count: 1
+                  },
+                  update: {
+                    count: { increment: 1 }
+                  }
+                }
+              }
+            }
+          })
+
+          return existingKey
         })
 
-        return existingKey
-      })
-
-      // Check rate limits
-      const rateLimit = await checkRateLimit(result.key, result.user.subscriptionPlan as 'free' | 'pro' | 'premium')
-      if (!rateLimit.success) {
-        return NextResponse.json({ 
-          error: 'Rate limit exceeded',
-          limit: rateLimit.limit,
-          remaining: rateLimit.remaining
-        }, { status: 429 })
-      }
-
-      return NextResponse.next()
-
-    } catch (error) {
-      console.error('API key validation error:', error)
-      return NextResponse.json({ 
-        error: error instanceof Error ? error.message : 'Authentication failed' 
-      }, { status: 401 })
-    }
-  }
-
-  const session = await auth()
-  const isLoggedIn = !!session?.user
-
-  // Handle API key routes
-  if (API_KEY_ROUTES.some(route => pathname.startsWith(route))) {
-    const apiKey = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (apiKey) {
-      // API key validation logic
-      try {
-        const hashedApiKey = hashApiKey(apiKey)
-        const keyData = await prisma.apiKey.findUnique({
-          where: { key: hashedApiKey },
-          include: {
-            user: { select: { subscriptionPlan: true } }
-          }
-        })
-
-        if (!keyData || !keyData.enabled) {
-          return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
-        }
-
-        // Rate limit check for API keys
-        const rateLimit = await checkRateLimit(keyData.key, keyData.user.subscriptionPlan as 'free' | 'pro' | 'premium')
+        // Check rate limits
+        const rateLimit = await checkRateLimit(result.key, result.user.subscriptionPlan as 'free' | 'pro' | 'premium')
         if (!rateLimit.success) {
-          return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+          return NextResponse.json({ 
+            error: 'Rate limit exceeded',
+            limit: rateLimit.limit,
+            remaining: rateLimit.remaining
+          }, { status: 429 })
         }
 
         return NextResponse.next()
+
       } catch (error) {
         console.error('API key validation error:', error)
-        return NextResponse.json({ error: 'Authentication failed, API key required for this endpoint' }, { status: 500 })
+        return NextResponse.json({ 
+          error: error instanceof Error ? error.message : 'Authentication failed' 
+        }, { status: 401 })
       }
+    }
+
+    const session = await auth()
+    const isLoggedIn = !!session?.user
+
+    // Handle API key routes
+    if (API_KEY_ROUTES.some(route => pathname.startsWith(route))) {
+      const apiKey = request.headers.get('authorization')?.replace('Bearer ', '')
+      if (apiKey) {
+        // API key validation logic
+        try {
+          const hashedApiKey = hashApiKey(apiKey)
+          const keyData = await prisma.apiKey.findUnique({
+            where: { key: hashedApiKey },
+            include: {
+              user: { select: { subscriptionPlan: true } }
+            }
+          })
+
+          if (!keyData || !keyData.enabled) {
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+          }
+
+          // Rate limit check for API keys
+          const rateLimit = await checkRateLimit(keyData.key, keyData.user.subscriptionPlan as 'free' | 'pro' | 'premium')
+          if (!rateLimit.success) {
+            return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+          }
+
+          return NextResponse.next()
+        } catch (error) {
+          console.error('API key validation error:', error)
+          return NextResponse.json({ error: 'Authentication failed, API key required for this endpoint' }, { status: 500 })
+        }
+      }
+    }
+
+    // Allow access if user is logged in
+    if (isLoggedIn) {
+      return NextResponse.next()
+    }
+
+    // Reject if no valid auth
+    return NextResponse.json({ error: 'Web Authentication required, or no api key provided' }, { status: 401 })
+  }
+
+  // Handle non-API protected routes
+  if (PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
+    const session = await auth()
+    if (!session?.user) {
+      const url = new URL('/auth/login', request.url)
+      url.searchParams.set('callbackUrl', pathname)
+      return NextResponse.redirect(url)
     }
   }
 
-  // Allow access if user is logged in
-  if (isLoggedIn) {
-    return NextResponse.next()
-  }
-
-  // Reject if no valid auth
-  return NextResponse.json({ error: 'Web Authentication required, or no api key provided' }, { status: 401 })
+  return NextResponse.next()
 }

@@ -26,12 +26,24 @@ export async function POST(req: Request) {
 
     // Check token limit first with error handling
     try {
-      const limitsResponse = await fetch(`${protocol}://${host}/api/limits`)
+      const limitsResponse = await fetch(`${protocol}://${host}/api/limits`, {
+        headers: {
+          Cookie: req.headers.get('cookie') || '',  // Forward the auth cookie
+        },
+        credentials: 'include',
+      })
+      
+      if (!limitsResponse.ok) {
+        throw new Error(`Limits check failed: ${limitsResponse.statusText}`)
+      }
+      
       const limits = await limitsResponse.json()
+      console.log('Limits response:', limits) // Add logging for debugging
 
-      // Add proper type checking and error handling
-      if (!limits || !limits.tokens || typeof limits.tokens.remaining !== 'number') {
-        throw new Error('Invalid limits response')
+      // Check if response has the expected structure
+      if (!limits || typeof limits.tokens?.remaining !== 'number') {
+        console.error('Invalid limits response structure:', limits)
+        throw new Error('Invalid limits response structure')
       }
 
       if (limits.tokens.remaining <= 0) {
@@ -44,7 +56,11 @@ export async function POST(req: Request) {
       // Increment token usage only if we have tokens remaining
       await fetch(`${protocol}://${host}/api/limits`, { 
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          Cookie: req.headers.get('cookie') || '',  // Forward the auth cookie
+        },
+        credentials: 'include',
       })
     } catch (error) {
       console.error('Error checking limits:', error)
