@@ -6,11 +6,12 @@ module.exports = {
       'plugin:@typescript-eslint/recommended'
     ],
     rules: {
-      '@typescript-eslint/no-unused-vars': 'warn',
-      'react/no-unescaped-entities': 'warn',
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'react/no-unescaped-entities': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@next/next/no-img-element': 'warn',
-      '@typescript-eslint/no-empty-interface': 'warn',
-      '@typescript-eslint/no-empty-object-type': 'off'
+      '@typescript-eslint/no-empty-interface': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     }
 }

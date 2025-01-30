@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         const modelVersion = user.aiSettings.modelVersion || 'gpt3'
         modelConfig = {
           provider: modelVersion === 'deepseek' ? 'deepseek' : 'openai',
-          modelName: modelVersion === 'gpt4' ? 'gpt-4' : 
+          modelName: modelVersion === 'gpt4o-mini' ? 'gpt-4o-mini' : 
                     modelVersion === 'deepseek' ? 'deepseek-chat' : 
                     'gpt-3.5-turbo',
           temperature: user.aiSettings.temperature,

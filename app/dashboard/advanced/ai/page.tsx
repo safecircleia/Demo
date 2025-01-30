@@ -58,12 +58,12 @@ const MODEL_OPTIONS = {
     bgGradient: "from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50"
   },
   gpt4: {
-    label: "GPT-4",
+    label: "GPT-4o mini",
     description: "Advanced capabilities with superior reasoning",
-    value: "gpt4",
+    value: "gpt4o-mini",
     capabilities: ['text', 'image'] as CapabilityType[],
-    available: false,
-    comingSoon: true,
+    available: true,
+    comingSoon: false,
     icon: OpenAI,
     iconSize: 56,
     bgGradient: "from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50"
@@ -115,7 +115,19 @@ const CapabilityTag = ({ type }: { type: CapabilityType }) => (
   </TooltipProvider>
 );
 
-const ModelCard = ({ model, isSelected, onSelect, isUpdating }) => (
+interface Model {
+  label: string;
+  description: string;
+  value: string;
+  capabilities: CapabilityType[];
+  available: boolean;
+  comingSoon?: boolean;
+  icon: React.ComponentType;
+  iconSize?: number;
+  bgGradient: string;
+}
+
+const ModelCard = ({ model, isSelected, onSelect, isUpdating }: { model: Model; isSelected: boolean; onSelect: (value: string) => void; isUpdating: boolean }) => (
   <Card
     className={cn(
       "group relative cursor-pointer transition-all duration-300",
@@ -130,7 +142,6 @@ const ModelCard = ({ model, isSelected, onSelect, isUpdating }) => (
     onClick={() => model.available && !isUpdating && onSelect(model.value)}
   >
     <div className="absolute inset-0 bg-gradient-to-br from-transparent to-background/5 pointer-events-none" />
-    
     <CardHeader className="pb-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -141,17 +152,16 @@ const ModelCard = ({ model, isSelected, onSelect, isUpdating }) => (
             "flex items-center justify-center",
             "shadow-sm"
           )}>
-            {React.createElement(model.icon, { 
-              size: model.iconSize || 32,
-              className: "transition-transform duration-300 group-hover:scale-110" 
-            })}
+            <div className="transition-transform duration-300 group-hover:scale-110">
+              {React.createElement(model.icon)}
+            </div>
           </div>
           <div className="space-y-1">
             <CardTitle className="text-xl font-semibold">
               {model.label}
             </CardTitle>
             {model.comingSoon ? (
-              <ComingSoonChip />
+              <Chip size="sm" variant="warning">Coming Soon</Chip>
             ) : (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <div className={cn(
@@ -165,7 +175,6 @@ const ModelCard = ({ model, isSelected, onSelect, isUpdating }) => (
         </div>
       </div>
     </CardHeader>
-
     <CardContent className="space-y-4">
       <p className="text-sm text-muted-foreground/90 leading-relaxed">
         {model.description}
@@ -283,7 +292,7 @@ const ModelSelector = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Internal Solutions</h3>
-          <Chip variant="outline" size="sm">Coming Soon</Chip>
+          <Chip variant="info" size="sm">Coming Soon</Chip>
         </div>
         <Card className="p-8">
           <div className="flex flex-col items-center justify-center text-center space-y-3">
@@ -303,7 +312,7 @@ const ModelSelector = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">External Providers</h3>
-          <Chip variant="outline" size="sm">Production Ready</Chip>
+          <Chip variant="info" size="sm">Production Ready</Chip>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Object.entries(MODEL_OPTIONS).map(([key, model]) => (
@@ -393,14 +402,16 @@ const SettingItem = ({ option }: { option: SettingOption }) => (
       <TooltipTrigger asChild>
         <div className="flex items-center justify-between py-2 opacity-70">
           <div className="flex items-center gap-2">
-            <option.icon className="w-4 h-4 text-muted-foreground" />
+            <div className="w-4 h-4 text-muted-foreground">
+              {React.createElement(option.icon)}
+            </div>
             <div>
               <p className="text-sm font-medium">{option.label}</p>
               <p className="text-xs text-muted-foreground">{option.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Chip size="sm" variant="secondary">Coming Soon</Chip>
+            <Chip size="sm" variant="warning">Coming Soon</Chip>
             <Switch disabled aria-disabled={true} checked={false} />
           </div>
         </div>
@@ -418,7 +429,7 @@ const SettingsSection = () => (
       <div key={category} className="space-y-4">
         <h3 className="font-medium text-lg">
           {category}
-          <Chip size="sm" variant="secondary" className="ml-2">Coming Soon</Chip>
+          <Chip size="sm" variant="info" className="ml-2">Coming Soon</Chip>
         </h3>
         <Card className="p-4">
           <div className="space-y-2">
@@ -436,7 +447,7 @@ const SettingsSection = () => (
 const ComingSoonChip = () => (
   <Chip 
     size="sm" 
-    variant="secondary" 
+    variant="warning" 
     className="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 ml-2 transition-colors"
   >
     <Lock className="w-3 h-3 mr-1" />
@@ -447,6 +458,7 @@ const ComingSoonChip = () => (
 export default function AISettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [activeTab, setActiveTab] = useState("model");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -480,8 +492,8 @@ export default function AISettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        heading="AI Settings"
-        text="Configure your AI model and analysis preferences"
+        title="AI Settings"
+        description="Configure your AI model and analysis preferences"
       />
 
       <Tabs defaultValue="model" className="space-y-4">
@@ -510,7 +522,11 @@ export default function AISettingsPage() {
           </Card>
         </TabsContent>
 
-        {["parameters", "safety", "performance"].map((tab) => (
+        {[
+          "parameters",
+          "safety",
+          "performance"
+        ].map((tab) => (
           <TabsContent key={tab} value={tab}>
             <Card className="p-4">
               <div className="flex items-center justify-center p-8">

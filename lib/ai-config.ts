@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai'
 import { deepseek } from '@ai-sdk/deepseek'
-import { AIStream, generateText } from 'ai'
+import { generateText } from 'ai'
 
 export type ModelProvider = 'openai' | 'deepseek'
 export type AnalysisStatus = 'SAFE' | 'SUSPICIOUS' | 'DANGEROUS'

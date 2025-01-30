@@ -90,7 +90,7 @@ export default function MessageAnalyzer() {
         if (response.ok) {
           const data = await response.json();
           // Convert modelVersion to actual model name
-          const modelName = data.modelVersion === 'gpt4' ? 'gpt-4' : 
+          const modelName = data.modelVersion === 'gpt4o-mini' ? 'gpt-4o-mini' : 
                           data.modelVersion === 'deepseek' ? 'deepseek-chat' : 
                           'gpt-3.5-turbo';
           setCurrentModel(modelName);
@@ -194,7 +194,7 @@ export default function MessageAnalyzer() {
 
   const handleRetry = async (message: Message) => {
     const messageIndex = messages.findIndex(m => m.id === message.id);
-    if (messageIndex === -1) return;
+    if (messageIndex === -1 || limitInfo.messages.remaining <= 0) return;
     
     // Remove error and prediction from message
     setMessages(prev => 
@@ -329,27 +329,37 @@ export default function MessageAnalyzer() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message to analyze..."
-                className="bg-black/50 border-white/10 focus:border-white/20 placeholder:text-white/50"
-                disabled={isLoading}
-              />
-              <Button 
-                type="submit" 
-                className="w-full bg-white text-black hover:bg-white/90 transition-colors"
-                disabled={isLoading || !input.trim()}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Shield className="h-4 w-4 mr-2" />
-                )}
-                {isLoading ? "Analyzing..." : "Analyze Message"}
-              </Button>
-            </form>
+            {limitInfo.tokens.remaining <= 0 ? (
+              <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                <ShieldAlert className="h-12 w-12 text-red-500" />
+                <p className="text-lg font-medium text-center text-gray-200">
+                  Thanks for testing out the beta but you have reached your daily message limit.
+                  Reach out to us on Twitter at <a href="https://twitter.com/safecircleai" className="text-blue-500 hover:underline">@safecircleai</a> if you have any feedback about the project. Thanks.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type a message to analyze..."
+                  className="bg-black/50 border-white/10 focus:border-white/20 placeholder:text-white/50"
+                  disabled={isLoading}
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full bg-white text-black hover:bg-white/90 transition-colors"
+                  disabled={isLoading || !input.trim() || limitInfo.tokens.remaining <= 0}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Shield className="h-4 w-4 mr-2" />
+                  )}
+                  {isLoading ? "Analyzing..." : "Analyze Message"}
+                </Button>
+              </form>
+            )}
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -380,9 +390,9 @@ export default function MessageAnalyzer() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleRetry(message)}
+                                disabled={limitInfo.messages.remaining <= 0}
                                 className="border-red-500/20 hover:bg-red-500/10"
                               >
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                 Retry
                               </Button>
                             </div>

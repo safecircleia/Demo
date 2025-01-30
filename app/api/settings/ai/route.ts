@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+interface AISettings {
+  tokenLimit: number;
+  tokensUsed: number;
+  tokensResetAt: Date | null;
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.email) {
@@ -14,7 +20,7 @@ export async function GET() {
   });
 
   // Calculate remaining tokens
-  const settings = user?.aiSettings || {};
+  const settings: AISettings = user?.aiSettings || { tokenLimit: 0, tokensUsed: 0, tokensResetAt: null };
   const tokensRemaining = settings.tokenLimit - (settings.tokensUsed || 0);
 
   return NextResponse.json({
