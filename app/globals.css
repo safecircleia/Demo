@@ -163,63 +163,6 @@
   background-size: 200% 100%;
 }
 
-/* Update the gradient blur */
-.gradient-blur {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  mix-blend-mode: normal;
-  background: radial-gradient(
-    circle at 50% 50%,
-    transparent 0%,
-    rgba(0, 0, 0, 0.8) 100%
-  );
-}
-
-.orb {
-  position: absolute;
-  filter: blur(100px);
-  opacity: 0.5;
-  transform-origin: center;
-  border-radius: 50%;
-}
-
-.orb-1 {
-  top: -20%;
-  left: -10%;
-  width: 60vh;
-  height: 60vh;
-  background: radial-gradient(circle at 50% 50%, 
-    rgba(255, 255, 255, 0.2),
-    rgba(255, 255, 255, 0.05)
-  );
-  animation: float 20s infinite;
-}
-
-.orb-2 {
-  top: 40%;
-  right: -15%;
-  width: 50vh;
-  height: 50vh;
-  background: radial-gradient(circle at 50% 50%,
-    rgba(255, 255, 255, 0.15),
-    rgba(255, 255, 255, 0.03)
-  );
-  animation: float 25s infinite reverse;
-}
-
-.orb-3 {
-  bottom: -10%;
-  left: 25%;
-  width: 45vh;
-  height: 45vh;
-  background: radial-gradient(circle at 50% 50%,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.02)
-  );
-  animation: float 30s infinite;
-}
-
 @keyframes float {
   0% { transform: translate(0, 0) rotate(0deg); }
   33% { transform: translate(50px, -50px) rotate(180deg); }

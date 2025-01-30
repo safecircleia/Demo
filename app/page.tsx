@@ -8,12 +8,13 @@ import { Chip } from "@/components/ui/chip";
 import { features } from "@/lib/data";
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { ProcessAnimation } from "@/components/ProcessAnimation";
+import { ShimmerText } from "@/components/ui/shimmer-text";
 
 export default function Home() {
   return (
     <div className="relative">
-      {/* Hero Section */}
-      <section className="min-h-screen flex flex-col justify-center relative">
+      {/* Hero Section - removed margin */}
+      <section className="h-[calc(100vh-4rem)] flex flex-col justify-center relative">
         <div className="container px-4 mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -21,17 +22,20 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="max-w-5xl mx-auto text-center"
           >
-            <div className="mb-8">
+            <div className="mb-5">
               <Link 
                 href="https://dexscreener.com/solana/4upkjadbyrmvp2nn7dwrsawndkpriruprs1gm38hhzg8"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="group rounded-full border border-white/5 bg-neutral-900/50 text-base text-white transition-all ease-in hover:cursor-pointer hover:bg-neutral-800/50 inline-block"
               >
-                <Chip className="bg-green-500/20 hover:bg-green-500/30 transition-colors">
-                  <span className="flex items-center gap-2">
-                    💎 Invest in this project <ExternalLink className="w-3 h-3" />
-                  </span>
-                </Chip>
+                <ShimmerText
+                  shimmerWidth={200}
+                  className="inline-flex items-center justify-center px-4 py-1 transition ease-out"
+                >
+                  💎 Invest in this project
+                  <ExternalLink className="w-3 h-3 ml-1 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+                </ShimmerText>
               </Link>
             </div>
             

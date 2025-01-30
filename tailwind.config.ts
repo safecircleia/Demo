@@ -87,15 +87,21 @@ module.exports = {
   				to: {
   					height: '0'
   				}
+  				},
+  				shimmer: {
+  					'100%': {
+  						'background-position': 'var(--shimmer-width) 0',
+  					},
+  				},
   			},
-  		},
-  		animation: {
-  			gradient: 'gradient 15s ease infinite',
-  			blob: 'blob 7s infinite',
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			animation: {
+  				gradient: 'gradient 15s ease infinite',
+  				blob: 'blob 7s infinite',
+  				'accordion-down': 'accordion-down 0.2s ease-out',
+  				'accordion-up': 'accordion-up 0.2s ease-out',
+  				shimmer: 'shimmer 2s linear infinite',
+  			}
   		}
-  	}
-  },
+  	},
   plugins: [require("tailwindcss-animate")],
 };

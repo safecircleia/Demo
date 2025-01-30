@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import confetti from 'canvas-confetti'
 import { cn } from "@/lib/utils"
+import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const betaFeatures = [
   {
@@ -34,6 +38,119 @@ const betaFeatures = [
     color: "border-green-500/20 bg-gradient-to-b from-green-500/10 to-transparent"
   }
 ]
+
+const feedbackCategories = [
+  { value: "ai", label: "AI Detection" },
+  { value: "monitoring", label: "Real-time Monitoring" },
+  { value: "rules", label: "Safety Rules" },
+  { value: "ui", label: "User Interface" },
+  { value: "other", label: "Other" }
+]
+
+const BetaFeedbackForm = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [rating, setRating] = useState<number>(0)
+  const [category, setCategory] = useState("")
+  const [feedback, setFeedback] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    
+    try {
+      // Add your API endpoint here
+      await fetch('/api/feedback', {
+        method: 'POST',
+        body: JSON.stringify({ rating, category, feedback }),
+      })
+      
+      toast.success("Thank you for your feedback!")
+      setRating(0)
+      setCategory("")
+      setFeedback("")
+    } catch (error) {
+      toast.error("Failed to submit feedback")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Card className="p-6 mt-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Beta Feedback</h3>
+          <p className="text-sm text-muted-foreground">
+            Help us improve by sharing your experience with our beta features
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>How would you rate your experience?</Label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Button
+                  key={star}
+                  type="button"
+                  variant="ghost"
+                  className={cn(
+                    "p-2",
+                    rating >= star ? "text-yellow-500" : "text-muted-foreground"
+                  )}
+                  onClick={() => setRating(star)}
+                >
+                  <StarIcon className="w-5 h-5" />
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {feedbackCategories.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Your Feedback</Label>
+            <Textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Share your thoughts..."
+              className="min-h-[100px]"
+            />
+          </div>
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isSubmitting || !rating || !category || !feedback}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            "Submit Feedback"
+          )}
+        </Button>
+      </form>
+    </Card>
+  )
+}
 
 export default function BetaAccessPage() {
   const { data: session, status } = useSession()
@@ -240,6 +357,7 @@ export default function BetaAccessPage() {
             </Card>
           </motion.div>
         )}
+        {session && <BetaFeedbackForm />}
       </div>
     </AnimatePresence>
   )

@@ -40,6 +40,7 @@ model User {
   familyRole          UserRole           @default(MEMBER)
   sentInvitations     FamilyInvitation[] @relation("SentInvitations")
   receivedInvitations FamilyInvitation[] @relation("ReceivedInvitations")
+  messageLogs         MessageLog[]
 
   @@index([familyId])
   @@map("users")
@@ -145,12 +146,15 @@ model BetaFeature {
 model AISettings {
   id           String   @id @default(cuid())
   userId       String   @unique
-  modelVersion String   @default("deepseek")
+  modelVersion String   @default("gpt3")
   temperature  Float    @default(0.7)
   maxTokens    Int      @default(2048)
   safetyLevel  String   @default("balanced")
   streaming    Boolean  @default(true)
   timeout      Int      @default(30)
+  tokenLimit   Int      @default(10)
+  tokensUsed   Int      @default(0)
+  tokensResetAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id])
@@ -216,4 +220,21 @@ model RateLimit {
 
   @@index([key, type])
   @@index([expiresAt])
+}
+
+model MessageLog {
+  id            String   @id @default(cuid())
+  message       String
+  userId        String?
+  status        String   // SAFE, SUSPICIOUS, DANGEROUS
+  confidence    Float
+  reason        String
+  responseTime  Int?
+  modelUsed     String?
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("message_log") // Changed from "message_logs" to "message_log"
 }

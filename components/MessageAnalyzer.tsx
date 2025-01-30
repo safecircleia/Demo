@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, AlertTriangle, ShieldCheck, Shield, Smile, Clock, FileJson, Copy, BrainCircuit, Info as InfoIcon, ShieldAlert, ShieldQuestion, BarChart3, AlertCircle } from "lucide-react";
+import { 
+  Send, Loader2, AlertTriangle, ShieldCheck, Shield, 
+  Smile, Clock, FileJson, Copy, BrainCircuit, 
+  Info as InfoIcon, ShieldAlert, ShieldQuestion, 
+  BarChart3, AlertCircle, Bot 
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +17,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -38,6 +44,13 @@ interface Message {
   error?: string;
 }
 
+interface LimitInfo {
+  used: number;
+  limit: number;
+  remaining: number;
+  resetsAt: string;
+}
+
 const formatConfidence = (confidence: number) => {
   // Ensure the confidence is already in percentage (0-100)
   const normalizedConfidence = Math.min(Math.round(confidence), 100);
@@ -51,6 +64,13 @@ export default function MessageAnalyzer() {
   const [isLoading, setIsLoading] = useState(false);
   const [showJsonDialog, setShowJsonDialog] = useState(false);
   const [selectedJson, setSelectedJson] = useState<string>("");
+  const [currentModel, setCurrentModel] = useState("gpt-3.5-turbo");
+  const [limitInfo, setLimitInfo] = useState({
+    messages: { used: 0, limit: 10, remaining: 10 },
+    tokens: { used: 0, limit: 10, remaining: 10 },
+    resetsAt: new Date().toISOString()
+  });
+  const [tokenInfo, setTokenInfo] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -63,6 +83,57 @@ export default function MessageAnalyzer() {
     requestAnimationFrame(scrollToBottom);
   }, [messages]);
 
+  useEffect(() => {
+    const loadAISettings = async () => {
+      try {
+        const response = await fetch("/api/settings/ai");
+        if (response.ok) {
+          const data = await response.json();
+          // Convert modelVersion to actual model name
+          const modelName = data.modelVersion === 'gpt4o-mini' ? 'gpt-4o-mini' : 
+                          data.modelVersion === 'deepseek' ? 'deepseek-chat' : 
+                          'gpt-3.5-turbo';
+          setCurrentModel(modelName);
+        }
+      } catch (error) {
+        console.error("Failed to load AI settings:", error);
+      }
+    };
+    loadAISettings();
+  }, []);
+
+  const fetchLimits = async () => {
+    try {
+      const response = await fetch('/api/limits');
+      if (response.ok) {
+        const data = await response.json();
+        setLimitInfo(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch limits:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLimits();
+  }, [messages]);
+
+  const fetchTokenInfo = async () => {
+    try {
+      const response = await fetch('/api/settings/ai');
+      if (response.ok) {
+        const data = await response.json();
+        setTokenInfo(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch token info:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTokenInfo();
+  }, [messages]);
+
   const clearMessages = () => setMessages([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +142,12 @@ export default function MessageAnalyzer() {
   };
 
   const analyzeMessage = async (messageText: string) => {
+    if (limitInfo.tokens.remaining <= 0) {
+      const resetTime = new Date(limitInfo.resetsAt);
+      toast.error(`Token limit reached. Resets at ${resetTime.toLocaleTimeString()}`);
+      return;
+    }
+
     const newMessage: Message = {
       id: crypto.randomUUID(),
       content: messageText.trim(),
@@ -90,7 +167,8 @@ export default function MessageAnalyzer() {
       });
       
       if (!response.ok) {
-        throw new Error(response.statusText || 'Analysis failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Analysis failed');
       }
       
       const prediction = await response.json();
@@ -99,8 +177,10 @@ export default function MessageAnalyzer() {
           msg.id === newMessage.id ? { ...msg, prediction } : msg
         )
       );
+      
+      // Fetch updated limits after successful analysis
+      fetchLimits();
     } catch (error) {
-      console.error(error);
       const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
       setMessages(prev => 
         prev.map(msg => 
@@ -114,7 +194,7 @@ export default function MessageAnalyzer() {
 
   const handleRetry = async (message: Message) => {
     const messageIndex = messages.findIndex(m => m.id === message.id);
-    if (messageIndex === -1) return;
+    if (messageIndex === -1 || limitInfo.messages.remaining <= 0) return;
     
     // Remove error and prediction from message
     setMessages(prev => 
@@ -174,6 +254,31 @@ export default function MessageAnalyzer() {
     }
   };
 
+  const getStatusStyles = (status: string) => {
+    switch (status) {
+      case 'SAFE':
+        return {
+          badge: 'bg-green-500/10 text-green-500',
+          gradient: 'bg-gradient-to-r from-green-950/50 via-transparent to-transparent'
+        }
+      case 'DANGEROUS':
+        return {
+          badge: 'bg-red-500/10 text-red-500',
+          gradient: 'bg-gradient-to-r from-red-950/50 via-transparent to-transparent'
+        }
+      case 'SUSPICIOUS':
+        return {
+          badge: 'bg-yellow-500/10 text-yellow-500',
+          gradient: 'bg-gradient-to-r from-yellow-950/50 via-transparent to-transparent'
+        }
+      default:
+        return {
+          badge: 'bg-gray-500/10 text-gray-500',
+          gradient: 'bg-gradient-to-r from-gray-950/50 via-transparent to-transparent'
+        }
+    }
+  }
+
   return (
     <TooltipProvider>
       <motion.div
@@ -184,174 +289,162 @@ export default function MessageAnalyzer() {
       >
         <Card className="border border-white/10 bg-black/50 backdrop-blur-xl">
           <CardHeader className="space-y-4">
-            <div className="flex justify-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={clearMessages}
-                disabled={messages.length === 0}
-                className="border-white/10 hover:bg-white/5"
-              >
-                Clear Log
-              </Button>
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                <Bot className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">{currentModel}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                {limitInfo && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-muted">
+                          <AlertCircle className={cn(
+                            "h-4 w-4",
+                            limitInfo.tokens.remaining === 0 ? "text-destructive" :
+                            limitInfo.tokens.remaining <= 3 ? "text-yellow-500" :
+                            "text-muted-foreground"
+                          )} />
+                          <span className="text-sm font-medium">
+                            {limitInfo.tokens.remaining}/{limitInfo.tokens.limit} messages remaining
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Resets at {new Date(limitInfo.resetsAt).toLocaleTimeString()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearMessages}
+                  disabled={messages.length === 0}
+                  className="border-white/10 hover:bg-white/5"
+                >
+                  Clear Log
+                </Button>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message to analyze..."
-                className="bg-black/50 border-white/10 focus:border-white/20 placeholder:text-white/50"
-                disabled={isLoading}
-              />
-              <Button 
-                type="submit" 
-                className="w-full bg-white text-black hover:bg-white/90 transition-colors"
-                disabled={isLoading || !input.trim()}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Shield className="h-4 w-4 mr-2" />
-                )}
-                {isLoading ? "Analyzing..." : "Analyze Message"}
-              </Button>
-            </form>
+            {limitInfo.tokens.remaining <= 0 ? (
+              <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                <ShieldAlert className="h-12 w-12 text-red-500" />
+                <p className="text-lg font-medium text-center text-gray-200">
+                  Thanks for testing out the beta but you have reached your daily message limit.
+                  Reach out to us on Twitter at <a href="https://twitter.com/safecircleai" className="text-blue-500 hover:underline">@safecircleai</a> if you have any feedback about the project. Thanks.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type a message to analyze..."
+                  className="bg-black/50 border-white/10 focus:border-white/20 placeholder:text-white/50"
+                  disabled={isLoading}
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full bg-white text-black hover:bg-white/90 transition-colors"
+                  disabled={isLoading || !input.trim() || limitInfo.tokens.remaining <= 0}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Shield className="h-4 w-4 mr-2" />
+                  )}
+                  {isLoading ? "Analyzing..." : "Analyze Message"}
+                </Button>
+              </form>
+            )}
           </CardHeader>
 
           <CardContent className="space-y-4">
             <AnimatePresence mode="popLayout">
-              {messages.map((message) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className={cn(
-                    "rounded-lg p-4 space-y-3 border backdrop-blur-sm",
-                    message.error ? "border-red-500/20 bg-red-500/5" :
-                    getStatusColors(message.prediction?.classification)
-                  )}>
-                    <div className="flex flex-col space-y-3">
-                      <p className="text-gray-200">{message.content}</p>
-                      
-                      {message.error ? (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-red-500" />
-                            <span className="text-sm font-medium text-red-500">
-                              ERROR: {message.error}
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRetry(message)}
-                            className="border-red-500/20 hover:bg-red-500/10"
-                          >
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Retry
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(message.prediction?.classification)}
-                              <Badge variant={
-                                message.prediction?.classification === "SAFE" ? "secondary" :
-                                message.prediction?.classification === "DANGEROUS" ? "destructive" :
-                                message.prediction?.classification === "SUSPICIOUS" ? "outline" :
-                                "default"
-                              }
-                              className={cn(
-                                "font-medium",
-                                message.prediction?.classification === "SAFE" ? "bg-green-500/10 text-green-500" :
-                                message.prediction?.classification === "DANGEROUS" ? "bg-red-500/10 text-red-500" :
-                                message.prediction?.classification === "SUSPICIOUS" ? "bg-yellow-500/10 text-yellow-500" :
-                                "bg-gray-500/10 text-gray-500"
-                              )}>
+              {messages.map((message) => {
+                const styles = getStatusStyles(message.prediction?.classification || 'default')
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Card className="relative overflow-hidden border border-white/10 bg-black/30">
+                      <div className={`absolute inset-0 ${styles.gradient} opacity-50`} />
+                      <div className="relative p-4 z-10">
+                        <div className="space-y-3">
+                          <p className="text-gray-200">{message.content}</p>
+                          
+                          {message.error ? (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-red-500" />
+                                <span className="text-sm font-medium text-red-500">
+                                  ERROR: {message.error}
+                                </span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRetry(message)}
+                                disabled={limitInfo.messages.remaining <= 0}
+                                className="border-red-500/20 hover:bg-red-500/10"
+                              >
+                                Retry
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <Badge className={styles.badge}>
                                 {message.prediction?.classification || "Analyzing..."}
                               </Badge>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                              {message.prediction?.probability && (
-                                <div className="flex items-center gap-2">
-                                  <BarChart3 className="h-4 w-4 text-gray-400" />
-                                  <span className="text-sm font-medium">
+                              <div className="flex items-center gap-4 text-sm text-gray-400">
+                                {message.prediction?.probability && (
+                                  <span className="flex items-center gap-1">
+                                    <BarChart3 className="h-4 w-4" />
                                     {Math.round(message.prediction.probability)}%
                                   </span>
-                                </div>
-                              )}
-                              {message.prediction?.responseTime && (
-                                <span className="flex items-center gap-1 text-sm text-gray-400">
-                                  <Clock className="h-4 w-4" />
-                                  {message.prediction.responseTime}ms
-                                </span>
-                              )}
-                              
-                              {message.prediction?.modelUsed && (
-                                <span className="flex items-center gap-1 text-sm text-gray-400">
-                                  <BrainCircuit className="h-4 w-4" />
-                                  {message.prediction.modelUsed}
-                                  {message.prediction.settings && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="p-0">
-                                          <InfoIcon className="h-4 w-4 ml-1" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <div className="space-y-1">
-                                          <p>Temperature: {message.prediction.settings.temperature}</p>
-                                          <p>Max Tokens: {message.prediction.settings.maxTokens}</p>
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                </span>
-                              )}
-                              
-                              {message.prediction?.rawResponse && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRawView(message.prediction?.rawResponse)}
-                                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-300"
-                                >
-                                  <FileJson className="h-4 w-4" />
-                                  Raw
-                                </Button>
-                              )}
+                                )}
+                                {message.prediction?.responseTime !== undefined && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-4 w-4" />
+                                    {`${Math.round(message.prediction.responseTime)}ms`}
+                                  </span>
+                                )}
+                                {message.prediction?.modelUsed && (
+                                  <span className="flex items-center gap-1">
+                                    <BrainCircuit className="h-4 w-4" />
+                                    {message.prediction.modelUsed}
+                                  </span>
+                                )}
+                                {message.prediction?.rawResponse && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRawView(message.prediction?.rawResponse)}
+                                    className="flex items-center gap-1 text-gray-400 hover:text-gray-300"
+                                  >
+                                    <FileJson className="h-4 w-4" />
+                                    Raw
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-
-                          {message.prediction?.probability && (
-                            <Progress 
-                              value={message.prediction.probability} 
-                              className={cn(
-                                "h-1.5",
-                                message.prediction.classification === "SAFE" ? "bg-emerald-950 [&::-webkit-progress-value]:bg-emerald-500" :
-                                message.prediction.classification === "DANGEROUS" ? "bg-red-950 [&::-webkit-progress-value]:bg-red-500" :
-                                "bg-yellow-950 [&::-webkit-progress-value]:bg-yellow-500"
-                              )}
-                            />
                           )}
-
                           {message.prediction?.details?.explanation && (
                             <p className="text-sm text-gray-400">
                               {message.prediction.details.explanation}
                             </p>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                      </div>
+                    </Card>
+                  </motion.div>
+                )
+              })}
             </AnimatePresence>
           </CardContent>
         </Card>
@@ -381,8 +474,7 @@ export default function MessageAnalyzer() {
                 {selectedJson}
               </pre>
             </div>
-          </div>
-        </DialogContent>
+          </div>        </DialogContent>
       </Dialog>
     </TooltipProvider>
   );
