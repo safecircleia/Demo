@@ -9,8 +9,8 @@
     "lint": "next lint",
     "vercel-build": "prisma generate && prisma db push --accept-data-loss && next build",
     "prisma:generate": "prisma generate",
-    "preview": "opennextjs-cloudflare && wrangler dev",
-    "deploy": "opennextjs-cloudflare && wrangler deploy",
+    "preview": "opennextjs-cloudflare build && wrangler dev",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
