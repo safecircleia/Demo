@@ -35,7 +35,7 @@ const footerLinks = [
     links: [
       { href: "/docs", label: "Documentation" },
       { href: "/blog", label: "Blog" },
-      { href: "https://github.com/tresillo2017/safecircle", label: "GitHub" }
+      { href: "https://github.com/safecircleia/demo", label: "GitHub" }
     ]
   },
   {
@@ -48,9 +48,9 @@ const footerLinks = [
 ];
 
 const socialLinks = [
-  { href: "https://github.com/tresillo2017", icon: Github },
+  { href: "https://github.com/safecircleia", icon: Github },
   { href: "https://twitter.com/safecircleai", icon: Twitter },
-  { href: "https://linkedin.com/in/tomasps", icon: Linkedin }
+  { href: "https://linkedin.com/company/safecircleai", icon: Linkedin }
 ];
 
 export function Footer({ forceMargin = true }: FooterProps) {
